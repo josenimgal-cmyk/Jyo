@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Joseph & Jyot — Expenses</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --bg: #080810;
+  --surface: #10101a;
+  --card: #13131e;
+  --border: #1c1c2e;
+  --accent: #7c6af7;
+  --accent2: #f76ab4;
+  --gold: #f5c842;
+  --green: #3dd68c;
+  --red: #ff5f7e;
+  --text: #e8e8f2;
+  --muted: #5e5e7a;
+  --input-bg: #17172a;
+  --r: 14px;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  min-height: 100vh;
+}
+body::before {
+  content:'';
+  position:fixed; inset:0; z-index:0; pointer-events:none;
+  background:
+    radial-gradient(ellipse 70% 50% at 15% 5%, rgba(124,106,247,.13) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 45% at 90% 85%, rgba(247,106,180,.1) 0%, transparent 55%);
+}
+
+.app { position:relative; z-index:1; max-width:980px; margin:0 auto; padding:30px 20px 90px; }
+
+/* TOPBAR */
+.topbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:38px; }
+.logo { font-family:'Syne',sans-serif; font-size:21px; font-weight:800; letter-spacing:-.5px; }
+.logo em { color:var(--accent); font-style:normal; }
+.topbar-btns { display:flex; gap:9px; }
+
+/* BUTTONS */
+.btn {
+  display:inline-flex; align-items:center; gap:7px;
+  padding:10px 18px; border-radius:10px; font-size:13.5px;
+  font-family:'DM Sans',sans-serif; font-weight:500;
+  cursor:pointer; border:none; transition:all .2s;
+}
+.btn-ghost { background:var(--card); color:var(--muted); border:1px solid var(--border); }
+.btn-ghost:hover { color:var(--text); border-color:var(--accent); }
+.btn-primary {
+  background: linear-gradient(130deg, var(--accent) 0%, var(--accent2) 100%);
+  color:#fff; box-shadow: 0 4px 22px rgba(124,106,247,.35);
+}
+.btn-primary:hover { transform:translateY(-1px); box-shadow:0 7px 30px rgba(124,106,247,.5); }
+.btn-sm { padding:8px 14px; font-size:12.5px; border-radius:9px; }
+.btn-danger { background:rgba(255,95,126,.1); color:var(--red); border:1px solid rgba(255,95,126,.15); }
+.btn-danger:hover { background:rgba(255,95,126,.2); }
+
+/* SETTLE BANNER */
+.banner {
+  background: linear-gradient(130deg, rgba(124,106,247,.13), rgba(247,106,180,.08));
+  border:1px solid rgba(124,106,247,.22);
+  border-radius:22px; padding:28px 30px;
+  display:grid; grid-template-columns:repeat(4,1fr);
+  gap:0; margin-bottom:28px;
+}
+.banner-col { padding:0 20px; }
+.banner-col + .banner-col { border-left:1px solid rgba(255,255,255,.06); }
+.b-label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1.2px; margin-bottom:8px; }
+.b-amount { font-family:'Syne',sans-serif; font-size:30px; font-weight:800; letter-spacing:-.5px; line-height:1; }
+.b-amount.green { color:var(--green); }
+.b-amount.gold  { color:var(--gold); }
+.b-amount.red   { color:var(--red); }
+.b-amount.muted { color:var(--muted); font-size:22px; }
+.b-sub { font-size:12.5px; color:var(--muted); margin-top:5px; }
+.b-sub strong { color:var(--text); font-weight:500; }
+
+/* STATS */
+.stats { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:28px; }
+.stat {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:var(--r); padding:20px 18px;
+  transition: border-color .2s;
+}
+.stat:hover { border-color:rgba(124,106,247,.35); }
+.stat-icon { font-size:20px; margin-bottom:10px; }
+.stat-label { font-size:11.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.8px; margin-bottom:5px; }
+.stat-val { font-family:'Syne',sans-serif; font-size:22px; font-weight:700; }
+
+/* TABS */
+.tabs { display:flex; gap:4px; background:var(--card); border:1px solid var(--border); border-radius:13px; padding:5px; width:fit-content; margin-bottom:26px; }
+.tab {
+  padding:9px 24px; border-radius:9px; font-size:14px; font-weight:500;
+  cursor:pointer; border:none; background:none; color:var(--muted);
+  transition:all .2s; font-family:'DM Sans',sans-serif; white-space:nowrap;
+}
+.tab.active { background:linear-gradient(130deg,var(--accent),var(--accent2)); color:#fff; }
+.tab:hover:not(.active) { color:var(--text); }
+
+/* ADD CARD */
+.add-card {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:20px; padding:26px 28px; margin-bottom:22px;
+}
+.card-title {
+  font-family:'Syne',sans-serif; font-size:17px; font-weight:700;
+  margin-bottom:22px; display:flex; align-items:center; gap:10px;
+}
+.card-title::before {
+  content:''; width:3px; height:20px; border-radius:2px;
+  background:linear-gradient(180deg,var(--accent),var(--accent2));
+  flex-shrink:0;
+}
+
+.form-row { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:14px; }
+.form-row.two { grid-template-columns:repeat(2,1fr); }
+.form-row.one { grid-template-columns:1fr; }
+.field { display:flex; flex-direction:column; gap:7px; }
+.field label { font-size:11.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.8px; }
+
+input, select, textarea {
+  background:var(--input-bg); border:1px solid var(--border);
+  border-radius:10px; padding:12px 14px;
+  color:var(--text); font-family:'DM Sans',sans-serif; font-size:14px;
+  outline:none; transition:border-color .2s, box-shadow .2s; width:100%;
+  -webkit-appearance:none;
+}
+input::placeholder { color:var(--muted); }
+input:focus, select:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(124,106,247,.12); }
+select option { background:#1a1a2e; }
+
+.btn-full { width:100%; padding:14px; font-size:15px; font-weight:600; border-radius:12px; margin-top:4px; letter-spacing:.1px; }
+
+/* FILTERS */
+.filter-row { display:flex; gap:9px; margin-bottom:18px; flex-wrap:wrap; align-items:center; }
+.chip {
+  padding:7px 16px; border-radius:20px; font-size:13px; cursor:pointer;
+  border:1px solid var(--border); background:var(--card); color:var(--muted);
+  transition:all .18s; font-family:'DM Sans',sans-serif;
+}
+.chip.active { background:rgba(124,106,247,.15); color:var(--accent); border-color:rgba(124,106,247,.4); }
+
+/* LIST HEADER */
+.list-hdr { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+.list-title { font-family:'Syne',sans-serif; font-size:18px; font-weight:700; }
+.list-count { font-size:13px; color:var(--muted); }
+
+/* TX ITEMS */
+.tx-list { display:flex; flex-direction:column; gap:9px; }
+.tx {
+  background:var(--card); border:1px solid var(--border); border-radius:var(--r);
+  padding:15px 18px; display:flex; align-items:center; gap:15px;
+  transition:border-color .18s, transform .15s;
+  animation:fadeIn .3s ease;
+}
+@keyframes fadeIn { from{opacity:0;transform:translateY(7px)} to{opacity:1;transform:none} }
+.tx:hover { border-color:rgba(124,106,247,.28); transform:translateX(2px); }
+.tx-icon {
+  width:44px; height:44px; border-radius:13px; display:flex; align-items:center;
+  justify-content:center; font-size:21px; flex-shrink:0;
+  background:rgba(124,106,247,.1);
+}
+.tx-info { flex:1; min-width:0; }
+.tx-name { font-weight:600; font-size:14.5px; margin-bottom:5px; }
+.tx-badges { display:flex; gap:6px; flex-wrap:wrap; }
+.badge { font-size:11.5px; padding:3px 9px; border-radius:20px; font-weight:500; }
+.b-both   { background:rgba(124,106,247,.15); color:var(--accent); }
+.b-joseph { background:rgba(61,214,140,.12);  color:var(--green); }
+.b-jyot   { background:rgba(247,106,180,.12); color:var(--accent2); }
+.b-gold   { background:rgba(245,200,66,.1);   color:var(--gold); }
+.tx-note { font-size:12.5px; color:var(--muted); margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.tx-right { text-align:right; flex-shrink:0; }
+.tx-amt { font-family:'Syne',sans-serif; font-size:17px; font-weight:700; }
+.tx-date { font-size:12px; color:var(--muted); margin-top:3px; }
+.tx-del { background:none; border:none; color:var(--muted); cursor:pointer; padding:7px; border-radius:8px; font-size:14px; transition:all .2s; }
+.tx-del:hover { color:var(--red); background:rgba(255,95,126,.1); }
+
+.month-sep { font-size:11.5px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; padding:6px 2px 4px; }
+
+.empty { text-align:center; padding:56px 20px; color:var(--muted); }
+.empty-icon { font-size:46px; margin-bottom:13px; }
+
+/* SUMMARY */
+.sum-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.sum-card { background:var(--card); border:1px solid var(--border); border-radius:var(--r); padding:22px; }
+.sum-title { font-size:11.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.9px; margin-bottom:16px; }
+.sum-row { display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px solid rgba(255,255,255,.04); font-size:14px; }
+.sum-row:last-child { border-bottom:none; }
+.sum-row .k { color:var(--muted); }
+.sum-row .v { font-weight:600; font-family:'Syne',sans-serif; font-size:15px; }
+
+/* TOAST */
+.toast {
+  position:fixed; bottom:28px; left:50%; transform:translateX(-50%) translateY(100px);
+  background:var(--card); border:1px solid rgba(124,106,247,.35); color:var(--text);
+  padding:12px 24px; border-radius:12px; font-size:14px;
+  box-shadow:0 8px 40px rgba(0,0,0,.6); z-index:9999; transition:transform .35s cubic-bezier(.34,1.56,.64,1);
+  white-space:nowrap;
+}
+.toast.show { transform:translateX(-50%) translateY(0); }
+
+@media(max-width:700px) {
+  .banner { grid-template-columns:1fr 1fr; }
+  .banner-col + .banner-col { border-left:none; }
+  .banner-col:nth-child(odd) { border-right:1px solid rgba(255,255,255,.06); }
+  .banner-col { padding:12px 14px; }
+  .stats { grid-template-columns:1fr 1fr; }
+  .form-row { grid-template-columns:1fr 1fr; }
+  .form-row.three { grid-template-columns:1fr; }
+  .sum-grid { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- TOP -->
+  <div class="topbar">
+    <div class="logo">Joseph <em>&</em> Jyot</div>
+    <div class="topbar-btns">
+      <button class="btn btn-ghost btn-sm" onclick="importExcel()">⬆ Import</button>
+      <button class="btn btn-ghost btn-sm" onclick="exportExcel()">⬇ Export Excel</button>
+      <input type="file" id="importFile" accept=".xlsx" style="display:none" onchange="handleImport(event)">
+    </div>
+  </div>
+
+  <!-- BANNER -->
+  <div class="banner">
+    <div class="banner-col">
+      <div class="b-label">Shared Total</div>
+      <div class="b-amount" id="bShared">₹0</div>
+      <div class="b-sub">split equally</div>
+    </div>
+    <div class="banner-col">
+      <div class="b-label">Joseph Paid</div>
+      <div class="b-amount green" id="bJoseph">₹0</div>
+      <div class="b-sub">toward shared</div>
+    </div>
+    <div class="banner-col">
+      <div class="b-label">Jyot Paid</div>
+      <div class="b-amount gold" id="bJyot">₹0</div>
+      <div class="b-sub">toward shared</div>
+    </div>
+    <div class="banner-col">
+      <div class="b-label">Settlement</div>
+      <div class="b-amount muted" id="bOwes">All square ✓</div>
+      <div class="b-sub" id="bOwesText">No balance due</div>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats">
+    <div class="stat"><div class="stat-icon">💸</div><div class="stat-label">Total Spent</div><div class="stat-val" id="sTotal">₹0</div></div>
+    <div class="stat"><div class="stat-icon">👤</div><div class="stat-label">Joseph</div><div class="stat-val" id="sJoseph">₹0</div></div>
+    <div class="stat"><div class="stat-icon">👤</div><div class="stat-label">Jyot</div><div class="stat-val" id="sJyot">₹0</div></div>
+    <div class="stat"><div class="stat-icon">🎁</div><div class="stat-label">Gifts</div><div class="stat-val" id="sGifts">₹0</div></div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" onclick="goTab('expenses',this)">Expenses</button>
+    <button class="tab" onclick="goTab('gifts',this)">Gifts</button>
+    <button class="tab" onclick="goTab('summary',this)">Summary</button>
+  </div>
+
+  <!-- EXPENSES -->
+  <div id="tab-expenses">
+    <div class="add-card">
+      <div class="card-title">Add Expense</div>
+      <div class="form-row">
+        <div class="field"><label>Date</label><input type="date" id="eDate"></div>
+        <div class="field"><label>Category</label>
+          <select id="eCat">
+            <option value="">Category…</option>
+            <option>🚈 Travel</option><option>🍽️ Food</option><option>🚗 Auto</option>
+            <option>🚕 Cab</option><option>🚆 Train</option><option>🚌 Bus</option>
+            <option>🍹 Drinks</option><option>💃 Dance</option><option>📦 Misc</option>
+          </select>
+        </div>
+        <div class="field"><label>Amount (₹)</label><input type="number" id="eAmt" placeholder="0.00" min="0" step="0.01"></div>
+      </div>
+      <div class="form-row two">
+        <div class="field"><label>Paid By</label>
+          <select id="ePaid"><option value="">Who paid?</option><option>Joseph</option><option>Jyot</option></select>
+        </div>
+        <div class="field"><label>For Whom</label>
+          <select id="eWhom"><option value="">For whom?</option><option>Both</option><option>Joseph</option><option>Jyot</option></select>
+        </div>
+      </div>
+      <div class="form-row one">
+        <div class="field"><label>Notes (optional)</label><input type="text" id="eNote" placeholder="What was this expense for?"></div>
+      </div>
+      <button class="btn btn-primary btn-full" onclick="addExpense()">+ Add Expense</button>
+    </div>
+
+    <div class="filter-row">
+      <button class="chip active" onclick="setFilter('all',this)">All</button>
+      <button class="chip" onclick="setFilter('Both',this)">🤝 Shared</button>
+      <button class="chip" onclick="setFilter('Joseph',this)">Joseph</button>
+      <button class="chip" onclick="setFilter('Jyot',this)">Jyot</button>
+    </div>
+
+    <div class="list-hdr">
+      <div class="list-title">History</div>
+      <div class="list-count" id="exCount">0 entries</div>
+    </div>
+    <div class="tx-list" id="exList"></div>
+  </div>
+
+  <!-- GIFTS -->
+  <div id="tab-gifts" style="display:none">
+    <div class="add-card">
+      <div class="card-title">Record a Gift</div>
+      <div class="form-row two">
+        <div class="field"><label>Date</label><input type="date" id="gDate"></div>
+        <div class="field"><label>Amount (₹)</label><input type="number" id="gAmt" placeholder="0.00" min="0" step="0.01"></div>
+      </div>
+      <div class="form-row two">
+        <div class="field"><label>Gift From</label>
+          <select id="gFrom"><option value="">From…</option><option>Joseph</option><option>Jyot</option></select>
+        </div>
+        <div class="field"><label>Gift To</label>
+          <select id="gTo"><option value="">To…</option><option>Joseph</option><option>Jyot</option></select>
+        </div>
+      </div>
+      <div class="form-row one">
+        <div class="field"><label>Reason / Notes</label><input type="text" id="gNote" placeholder="Birthday, anniversary, just because…"></div>
+      </div>
+      <button class="btn btn-primary btn-full" onclick="addGift()">+ Record Gift</button>
+    </div>
+    <div class="list-hdr">
+      <div class="list-title">Gift History</div>
+      <div class="list-count" id="gCount">0 gifts</div>
+    </div>
+    <div class="tx-list" id="gList"></div>
+  </div>
+
+  <!-- SUMMARY -->
+  <div id="tab-summary" style="display:none">
+    <div class="sum-grid" id="sumGrid"></div>
+  </div>
+
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const LS = { ex:'jj_ex2', gi:'jj_gi2' };
+let data = { ex:[], gi:[] };
+let filter = 'all';
+
+function load() {
+  try { data.ex = JSON.parse(localStorage.getItem(LS.ex)||'[]'); } catch(e){}
+  try { data.gi = JSON.parse(localStorage.getItem(LS.gi)||'[]'); } catch(e){}
+}
+function save() {
+  localStorage.setItem(LS.ex, JSON.stringify(data.ex));
+  localStorage.setItem(LS.gi, JSON.stringify(data.gi));
+}
+
+function fmt(n) {
+  return '₹'+Number(n||0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function fmtD(d) {
+  if(!d) return '';
+  try { return new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}); } catch(e){ return d; }
+}
+
+const ICONS = {'Travel':'🚈','Food':'🍽️','Auto':'🚗','Cab':'🚕','Train':'🚆','Bus':'🚌','Drinks':'🍹','Dance':'💃','Misc':'📦'};
+function icon(cat) {
+  for(let k in ICONS) if(cat&&cat.includes(k)) return ICONS[k];
+  return '📦';
+}
+
+function addExpense() {
+  const d=document.getElementById('eDate').value,
+        c=document.getElementById('eCat').value,
+        a=parseFloat(document.getElementById('eAmt').value),
+        p=document.getElementById('ePaid').value,
+        w=document.getElementById('eWhom').value,
+        n=document.getElementById('eNote').value.trim();
+  if(!d||!c||!a||!p||!w) return toast('⚠️ Fill in all required fields');
+  if(a<=0) return toast('⚠️ Amount must be greater than 0');
+  data.ex.unshift({id:Date.now(),d,c,a,p,w,n});
+  save(); render();
+  document.getElementById('eAmt').value='';
+  document.getElementById('eNote').value='';
+  document.getElementById('eCat').value='';
+  document.getElementById('eWhom').value='';
+  toast('✅ Expense added!');
+}
+
+function addGift() {
+  const d=document.getElementById('gDate').value,
+        a=parseFloat(document.getElementById('gAmt').value),
+        f=document.getElementById('gFrom').value,
+        t=document.getElementById('gTo').value,
+        n=document.getElementById('gNote').value.trim();
+  if(!d||!a||!f||!t) return toast('⚠️ Fill in all required fields');
+  if(f===t) return toast('⚠️ From and To can\'t be same');
+  data.gi.unshift({id:Date.now(),d,a,f,t,n});
+  save(); renderGifts(); renderStats(); renderSummary();
+  document.getElementById('gAmt').value='';
+  document.getElementById('gNote').value='';
+  toast('🎁 Gift recorded!');
+}
+
+function delEx(id) { data.ex=data.ex.filter(e=>e.id!==id); save(); render(); toast('🗑️ Removed'); }
+function delGi(id) { data.gi=data.gi.filter(g=>g.id!==id); save(); renderGifts(); renderStats(); renderSummary(); toast('🗑️ Removed'); }
+
+function renderEx() {
+  const list=document.getElementById('exList');
+  const items=filter==='all'?data.ex:data.ex.filter(e=>e.w===filter);
+  document.getElementById('exCount').textContent=items.length+' entries';
+  if(!items.length){
+    list.innerHTML='<div class="empty"><div class="empty-icon">📭</div><div>No expenses yet — add your first one above!</div></div>';
+    return;
+  }
+  let html='', lastM='';
+  items.forEach(e=>{
+    const m=e.d?new Date(e.d).toLocaleDateString('en-IN',{month:'long',year:'numeric'}):'';
+    if(m!==lastM){html+=`<div class="month-sep">${m}</div>`;lastM=m;}
+    const wb=e.w==='Both'?'b-both':e.w==='Joseph'?'b-joseph':'b-jyot';
+    const pb=e.p==='Joseph'?'b-joseph':'b-jyot';
+    html+=`<div class="tx">
+      <div class="tx-icon">${icon(e.c)}</div>
+      <div class="tx-info">
+        <div class="tx-name">${e.c}</div>
+        <div class="tx-badges">
+          <span class="badge ${pb}">Paid: ${e.p}</span>
+          <span class="badge ${wb}">For: ${e.w}</span>
+        </div>
+        ${e.n?`<div class="tx-note">${e.n}</div>`:''}
+      </div>
+      <div class="tx-right">
+        <div class="tx-amt">${fmt(e.a)}</div>
+        <div class="tx-date">${fmtD(e.d)}</div>
+      </div>
+      <button class="tx-del" onclick="delEx(${e.id})" title="Delete">✕</button>
+    </div>`;
+  });
+  list.innerHTML=html;
+}
+
+function renderGifts() {
+  const list=document.getElementById('gList');
+  document.getElementById('gCount').textContent=data.gi.length+' gifts';
+  if(!data.gi.length){
+    list.innerHTML='<div class="empty"><div class="empty-icon">🎁</div><div>No gifts recorded yet.</div></div>';
+    return;
+  }
+  list.innerHTML=data.gi.map(g=>{
+    const fb=g.f==='Joseph'?'b-joseph':'b-jyot';
+    const tb=g.t==='Joseph'?'b-joseph':'b-jyot';
+    return `<div class="tx">
+      <div class="tx-icon">🎁</div>
+      <div class="tx-info">
+        <div class="tx-name">Gift</div>
+        <div class="tx-badges">
+          <span class="badge ${fb}">From: ${g.f}</span>
+          <span class="badge ${tb}">To: ${g.t}</span>
+        </div>
+        ${g.n?`<div class="tx-note">${g.n}</div>`:''}
+      </div>
+      <div class="tx-right">
+        <div class="tx-amt">${fmt(g.a)}</div>
+        <div class="tx-date">${fmtD(g.d)}</div>
+      </div>
+      <button class="tx-del" onclick="delGi(${g.id})" title="Delete">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function renderStats() {
+  const ex=data.ex;
+  const shared=ex.filter(e=>e.w==='Both');
+  const sharedTotal=shared.reduce((s,e)=>s+e.a,0);
+  const jPaid=shared.filter(e=>e.p==='Joseph').reduce((s,e)=>s+e.a,0);
+  const kPaid=shared.filter(e=>e.p==='Jyot').reduce((s,e)=>s+e.a,0);
+  const each=sharedTotal/2;
+  const jOwes=Math.max(0,each-jPaid);
+  const kOwes=Math.max(0,each-kPaid);
+  const jAll=ex.filter(e=>e.p==='Joseph').reduce((s,e)=>s+e.a,0);
+  const kAll=ex.filter(e=>e.p==='Jyot').reduce((s,e)=>s+e.a,0);
+  const gTotal=data.gi.reduce((s,g)=>s+g.a,0);
+
+  document.getElementById('bShared').textContent=fmt(sharedTotal);
+  document.getElementById('bJoseph').textContent=fmt(jPaid);
+  document.getElementById('bJyot').textContent=fmt(kPaid);
+  document.getElementById('sTotal').textContent=fmt(jAll+kAll);
+  document.getElementById('sJoseph').textContent=fmt(jAll);
+  document.getElementById('sJyot').textContent=fmt(kAll);
+  document.getElementById('sGifts').textContent=fmt(gTotal);
+
+  const owesEl=document.getElementById('bOwes');
+  const owesT=document.getElementById('bOwesText');
+  if(jOwes>0.01){
+    owesEl.textContent=fmt(jOwes); owesEl.className='b-amount red';
+    owesT.innerHTML='<strong>Joseph</strong> owes <strong>Jyot</strong>';
+  } else if(kOwes>0.01){
+    owesEl.textContent=fmt(kOwes); owesEl.className='b-amount red';
+    owesT.innerHTML='<strong>Jyot</strong> owes <strong>Joseph</strong>';
+  } else {
+    owesEl.textContent='All square ✓'; owesEl.className='b-amount muted';
+    owesT.textContent='No balance due';
+  }
+}
+
+function renderSummary() {
+  const ex=data.ex;
+  const shared=ex.filter(e=>e.w==='Both');
+  const sharedTotal=shared.reduce((s,e)=>s+e.a,0);
+  const jShared=shared.filter(e=>e.p==='Joseph').reduce((s,e)=>s+e.a,0);
+  const kShared=shared.filter(e=>e.p==='Jyot').reduce((s,e)=>s+e.a,0);
+  const each=sharedTotal/2;
+  const jPersonal=ex.filter(e=>e.w==='Joseph').reduce((s,e)=>s+e.a,0);
+  const kPersonal=ex.filter(e=>e.w==='Jyot').reduce((s,e)=>s+e.a,0);
+  const gByJ=data.gi.filter(g=>g.f==='Joseph').reduce((s,g)=>s+g.a,0);
+  const gByK=data.gi.filter(g=>g.f==='Jyot').reduce((s,g)=>s+g.a,0);
+
+  const catMap={};
+  ex.forEach(e=>{ const k=e.c||'📦 Misc'; catMap[k]=(catMap[k]||0)+e.a; });
+  const catRows=Object.entries(catMap).sort((a,b)=>b[1]-a[1])
+    .map(([k,v])=>`<div class="sum-row"><span class="k">${k}</span><span class="v">${fmt(v)}</span></div>`).join('');
+
+  document.getElementById('sumGrid').innerHTML=`
+    <div class="sum-card">
+      <div class="sum-title">Shared Expense Split</div>
+      <div class="sum-row"><span class="k">Total Shared</span><span class="v">${fmt(sharedTotal)}</span></div>
+      <div class="sum-row"><span class="k">Each Person's Share</span><span class="v">${fmt(each)}</span></div>
+      <div class="sum-row"><span class="k">Joseph Paid (Shared)</span><span class="v" style="color:var(--green)">${fmt(jShared)}</span></div>
+      <div class="sum-row"><span class="k">Jyot Paid (Shared)</span><span class="v" style="color:var(--accent2)">${fmt(kShared)}</span></div>
+      <div class="sum-row"><span class="k">Joseph Owes Jyot</span><span class="v" style="color:var(--red)">${fmt(Math.max(0,each-jShared))}</span></div>
+      <div class="sum-row"><span class="k">Jyot Owes Joseph</span><span class="v" style="color:var(--red)">${fmt(Math.max(0,each-kShared))}</span></div>
+    </div>
+    <div class="sum-card">
+      <div class="sum-title">Personal & Gifts</div>
+      <div class="sum-row"><span class="k">Joseph's Personal</span><span class="v">${fmt(jPersonal)}</span></div>
+      <div class="sum-row"><span class="k">Jyot's Personal</span><span class="v">${fmt(kPersonal)}</span></div>
+      <div class="sum-row"><span class="k">Gifts by Joseph</span><span class="v" style="color:var(--gold)">${fmt(gByJ)}</span></div>
+      <div class="sum-row"><span class="k">Gifts by Jyot</span><span class="v" style="color:var(--gold)">${fmt(gByK)}</span></div>
+    </div>
+    <div class="sum-card" style="grid-column:1/-1">
+      <div class="sum-title">Spending by Category</div>
+      ${catRows||'<div class="sum-row"><span class="k" style="color:var(--muted)">No data yet</span></div>'}
+    </div>`;
+}
+
+function goTab(name, btn) {
+  ['expenses','gifts','summary'].forEach(t=>document.getElementById('tab-'+t).style.display=t===name?'block':'none');
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  if(name==='summary') renderSummary();
+}
+
+function setFilter(f, btn) {
+  filter=f;
+  document.querySelectorAll('.chip').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderEx();
+}
+
+function toast(msg) {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2600);
+}
+
+function exportExcel() {
+  const wb=XLSX.utils.book_new();
+  const expRows=data.ex.map(e=>({Date:e.d,Category:e.c,'Paid By':e.p,'Amount (₹)':e.a,'For Whom':e.w,Notes:e.n}));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(expRows.length?expRows:[{Date:'',Category:'','Paid By':'','Amount (₹)':0,'For Whom':'',Notes:''}]), 'Main Expenses');
+  const giRows=data.gi.map(g=>({Date:g.d,'Gift From':g.f,'Gift To':g.t,'Amount (₹)':g.a,'Reason/Notes':g.n}));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(giRows.length?giRows:[{Date:'','Gift From':'','Gift To':'','Amount (₹)':0,'Reason/Notes':''}]), 'Gifts');
+  XLSX.writeFile(wb,'Joseph_Jyot_Expenses.xlsx');
+  toast('📥 Excel exported!');
+}
+
+function importExcel() { document.getElementById('importFile').click(); }
+function handleImport(evt) {
+  const file=evt.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const wb=XLSX.read(e.target.result,{type:'binary'});
+      const ws1=wb.Sheets['Main Expenses'], ws2=wb.Sheets['Gifts'];
+      if(ws1){
+        const rows=XLSX.utils.sheet_to_json(ws1);
+        data.ex=rows.filter(r=>r['Amount (₹)']>0).map(r=>({
+          id:Date.now()+Math.random(),d:r.Date||'',c:r.Category||'📦 Misc',
+          a:Number(r['Amount (₹)'])||0,p:r['Paid By']||'',w:r['For Whom']||'Both',n:r.Notes||''
+        }));
+      }
+      if(ws2){
+        const rows=XLSX.utils.sheet_to_json(ws2);
+        data.gi=rows.filter(r=>r['Amount (₹)']>0).map(r=>({
+          id:Date.now()+Math.random(),d:r.Date||'',f:r['Gift From']||'',
+          t:r['Gift To']||'',a:Number(r['Amount (₹)'])||0,n:r['Reason/Notes']||''
+        }));
+      }
+      save(); render(); toast('✅ Data imported!');
+    }catch(err){ toast('❌ Import failed'); }
+  };
+  reader.readAsBinaryString(file);
+  evt.target.value='';
+}
+
+function render() { renderEx(); renderGifts(); renderStats(); renderSummary(); }
+
+window.addEventListener('DOMContentLoaded',()=>{
+  const today=new Date().toISOString().split('T')[0];
+  document.getElementById('eDate').value=today;
+  document.getElementById('gDate').value=today;
+  load(); render();
+});
+</script>
+</body>
+</html>
