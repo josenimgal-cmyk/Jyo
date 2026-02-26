@@ -7,1085 +7,672 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
-  :root {
-    --bg: #0d0f14;
-    --surface: #161920;
-    --card: #1e2230;
-    --card2: #252a3a;
-    --border: #2e3347;
-    --gold: #e8b86d;
-    --gold2: #f5d394;
-    --accent: #6c8eff;
-    --green: #4ecb8d;
-    --red: #f07070;
-    --text: #f0f2f8;
-    --muted: #8892aa;
-    --joseph: #6c8eff;
-    --jyot: #e8b86d;
-    --both: #4ecb8d;
-    --radius: 16px;
-    --radius-sm: 10px;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: 'DM Sans', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background:
-      radial-gradient(ellipse 60% 40% at 80% 10%, rgba(108,142,255,0.07) 0%, transparent 60%),
-      radial-gradient(ellipse 50% 50% at 10% 90%, rgba(232,184,109,0.07) 0%, transparent 60%);
-    pointer-events: none;
-    z-index: 0;
-  }
-  .header {
-    position: sticky; top: 0; z-index: 100;
-    background: rgba(13,15,20,0.92);
-    backdrop-filter: blur(18px);
-    border-bottom: 1px solid var(--border);
-    padding: 0 24px;
-    display: flex; align-items: center; justify-content: space-between;
-    height: 64px;
-  }
-  .logo {
-    font-family: 'DM Serif Display', serif;
-    font-size: 1.3rem;
-    background: linear-gradient(135deg, var(--gold), var(--accent));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    letter-spacing: -0.5px;
-  }
-  .logo span { font-style: italic; }
-  .header-actions { display: flex; gap: 8px; align-items: center; }
-  .sync-status {
-    font-size: 0.72rem; color: var(--muted);
-    display: flex; align-items: center; gap: 5px;
-    padding: 6px 12px;
-    border: 1px solid var(--border); border-radius: 30px;
-    background: var(--card);
-    white-space: nowrap;
-  }
-  .sync-dot {
-    width: 7px; height: 7px; border-radius: 50%;
-    background: var(--muted); flex-shrink: 0;
-    transition: background 0.3s;
-  }
-  .sync-dot.synced  { background: var(--green); }
-  .sync-dot.syncing { background: var(--gold); animation: pulse 1s infinite; }
-  .sync-dot.error   { background: var(--red); }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-  .btn-export {
-    background: linear-gradient(135deg, #2a7a5a, #2d9c72);
-    color: #fff; border: none; border-radius: var(--radius-sm);
-    padding: 9px 18px;
-    font-family: 'DM Sans', sans-serif; font-size: 0.82rem; font-weight: 600;
-    cursor: pointer; display: flex; align-items: center; gap: 6px;
-    transition: all 0.2s; letter-spacing: 0.3px;
-  }
-  .btn-export:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(78,203,141,0.3); }
-  .nav {
-    display: flex; gap: 6px; padding: 16px 20px 0;
-    position: relative; z-index: 1;
-    overflow-x: auto; scrollbar-width: none;
-  }
-  .nav::-webkit-scrollbar { display: none; }
-  .nav-tab {
-    background: none; border: 1px solid var(--border); color: var(--muted);
-    border-radius: 40px; padding: 8px 20px;
-    font-family: 'DM Sans', sans-serif; font-size: 0.85rem; font-weight: 500;
-    cursor: pointer; transition: all 0.2s; white-space: nowrap;
-    display: flex; align-items: center; gap: 6px;
-  }
-  .nav-tab:hover { border-color: var(--accent); color: var(--text); }
-  .nav-tab.active {
-    background: var(--accent); border-color: var(--accent); color: #fff;
-    box-shadow: 0 4px 16px rgba(108,142,255,0.35);
-  }
-  .nav-tab.gifts-tab.active {
-    background: var(--gold); border-color: var(--gold); color: #0d0f14;
-    box-shadow: 0 4px 16px rgba(232,184,109,0.35);
-  }
-  .main {
-    max-width: 780px; margin: 0 auto;
-    padding: 24px 20px 80px; position: relative; z-index: 1;
-  }
-  .tab-content { display: none; }
-  .tab-content.active { display: block; }
-  .card {
-    background: var(--card); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 24px; margin-bottom: 16px;
-    transition: border-color 0.2s;
-  }
-  .card:hover { border-color: #3a4060; }
-  .card-title {
-    font-family: 'DM Serif Display', serif; font-size: 1.1rem;
-    margin-bottom: 20px; color: var(--gold2);
-    display: flex; align-items: center; gap: 8px;
-  }
-  .balance-grid {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px;
-  }
-  @media(max-width: 480px) { .balance-grid { grid-template-columns: 1fr; } }
-  .balance-card {
-    background: var(--card2); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 20px;
-    position: relative; overflow: hidden;
-  }
-  .balance-card::before {
-    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
-  }
-  .balance-card.joseph::before { background: linear-gradient(90deg, var(--joseph), transparent); }
-  .balance-card.jyot::before   { background: linear-gradient(90deg, var(--jyot), transparent); }
-  .balance-label {
-    font-size: 0.72rem; font-weight: 600; letter-spacing: 1.2px;
-    text-transform: uppercase; color: var(--muted); margin-bottom: 10px;
-  }
-  .balance-name {
-    font-family: 'DM Serif Display', serif; font-size: 1.3rem; margin-bottom: 6px;
-  }
-  .balance-card.joseph .balance-name { color: var(--joseph); }
-  .balance-card.jyot .balance-name   { color: var(--jyot); }
-  .balance-amount {
-    font-size: 1.8rem; font-weight: 700; color: var(--text); letter-spacing: -1px; margin-bottom: 4px;
-  }
-  .balance-sub { font-size: 0.76rem; color: var(--muted); }
-  .settlement {
-    background: linear-gradient(135deg, rgba(232,184,109,0.08), rgba(108,142,255,0.08));
-    border: 1px solid rgba(232,184,109,0.2);
-    border-radius: var(--radius); padding: 20px 24px; margin-bottom: 16px;
-    display: flex; align-items: center; justify-content: space-between;
-    flex-wrap: wrap; gap: 12px;
-  }
-  .settlement-label {
-    font-size: 0.72rem; color: var(--muted); text-transform: uppercase;
-    letter-spacing: 1px; margin-bottom: 4px;
-  }
-  .settlement-text {
-    font-family: 'DM Serif Display', serif; font-size: 1.2rem; color: var(--text);
-  }
-  .settlement-text .highlight { color: var(--gold); }
-  .settlement-text .amount    { color: var(--green); font-size: 1.35rem; }
-  .settlement-text.all-good  { color: var(--green); }
-  .settlement-badge {
-    background: rgba(240,112,112,0.12); border: 1px solid rgba(240,112,112,0.25);
-    color: var(--red); border-radius: 30px; padding: 6px 14px;
-    font-size: 0.78rem; font-weight: 600;
-  }
-  .stats-row {
-    display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-bottom: 16px;
-  }
-  @media(max-width: 480px) { .stats-row { grid-template-columns: 1fr 1fr; } }
-  .stat-card {
-    background: var(--card); border: 1px solid var(--border);
-    border-radius: var(--radius-sm); padding: 16px; text-align: center;
-  }
-  .stat-value {
-    font-size: 1.25rem; font-weight: 700; color: var(--text);
-    letter-spacing: -0.5px; margin-bottom: 4px;
-  }
-  .stat-label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; }
-  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-  @media(max-width: 500px) { .form-grid { grid-template-columns: 1fr; } }
-  .form-group { display: flex; flex-direction: column; gap: 6px; }
-  .form-group.full { grid-column: 1 / -1; }
-  label { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; color: var(--muted); }
-  input, select, textarea {
-    background: var(--bg); border: 1px solid var(--border);
-    border-radius: var(--radius-sm); color: var(--text);
-    font-family: 'DM Sans', sans-serif; font-size: 0.95rem;
-    padding: 12px 14px; width: 100%;
-    transition: border-color 0.2s, box-shadow 0.2s;
-    outline: none; appearance: none; -webkit-appearance: none;
-  }
-  input:focus, select:focus, textarea:focus {
-    border-color: var(--accent); box-shadow: 0 0 0 3px rgba(108,142,255,0.14);
-  }
-  select {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238892aa' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
-    background-repeat: no-repeat; background-position: right 14px center;
-    padding-right: 36px; cursor: pointer;
-  }
-  select option { background: #1e2230; }
-  textarea { resize: vertical; min-height: 80px; }
-  .pill-group { display: flex; gap: 8px; flex-wrap: wrap; }
-  .pill {
-    flex: 1; min-width: 90px; background: var(--bg);
-    border: 1px solid var(--border); border-radius: 30px;
-    color: var(--muted); font-family: 'DM Sans', sans-serif;
-    font-size: 0.85rem; font-weight: 500; padding: 10px;
-    cursor: pointer; transition: all 0.2s; text-align: center;
-  }
-  .pill:hover { border-color: var(--accent); color: var(--text); }
-  .pill.active.joseph-pill { background: var(--joseph); border-color: var(--joseph); color: #fff; }
-  .pill.active.jyot-pill   { background: var(--jyot);   border-color: var(--jyot);   color: #0d0f14; }
-  .pill.active.both-pill   { background: var(--both);   border-color: var(--both);   color: #0d0f14; }
-  .btn-submit {
-    width: 100%; margin-top: 20px;
-    background: linear-gradient(135deg, var(--accent), #4e6fef);
-    border: none; border-radius: var(--radius-sm); color: #fff;
-    font-family: 'DM Sans', sans-serif; font-size: 1rem; font-weight: 600;
-    padding: 14px; cursor: pointer; transition: all 0.2s; letter-spacing: 0.3px;
-  }
-  .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(108,142,255,0.4); }
-  .btn-submit:active { transform: translateY(0); }
-  .btn-submit:disabled { opacity: 0.55; cursor: not-allowed; transform: none; box-shadow: none; }
-  .btn-gift-submit { background: linear-gradient(135deg, var(--gold), #c98a30); color: #0d0f14; }
-  .btn-gift-submit:hover { box-shadow: 0 6px 20px rgba(232,184,109,0.4); }
-  .toast {
-    position: fixed; bottom: 24px; left: 50%;
-    transform: translateX(-50%) translateY(80px);
-    background: var(--card2); border: 1px solid var(--border); border-radius: 40px;
-    padding: 12px 24px; font-size: 0.88rem; font-weight: 500; color: var(--green);
-    box-shadow: 0 8px 32px rgba(0,0,0,0.4); z-index: 9999;
-    transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1); white-space: nowrap;
-  }
-  .toast.show { transform: translateX(-50%) translateY(0); }
-  .tx-list { display: flex; flex-direction: column; gap: 10px; }
-  .tx-item {
-    background: var(--card2); border: 1px solid var(--border);
-    border-radius: var(--radius-sm); padding: 14px 16px;
-    display: flex; align-items: center; gap: 14px;
-    transition: border-color 0.2s; animation: slideIn 0.28s ease;
-  }
-  @keyframes slideIn { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
-  .tx-item:hover { border-color: #3a4060; }
-  .tx-icon {
-    width: 42px; height: 42px; border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1.15rem; flex-shrink: 0;
-  }
-  .tx-info { flex: 1; min-width: 0; }
-  .tx-category {
-    font-weight: 600; font-size: 0.9rem; color: var(--text); margin-bottom: 4px;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
-  .tx-meta { font-size: 0.75rem; color: var(--muted); display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-  .tx-badge {
-    border-radius: 20px; padding: 2px 8px;
-    font-size: 0.68rem; font-weight: 600; letter-spacing: 0.4px;
-  }
-  .tx-badge.joseph { background: rgba(108,142,255,0.15); color: var(--joseph); }
-  .tx-badge.jyot   { background: rgba(232,184,109,0.15); color: var(--jyot); }
-  .tx-badge.both   { background: rgba(78,203,141,0.15);  color: var(--both); }
-  .tx-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
-  .tx-amount { font-size: 1.05rem; font-weight: 700; color: var(--text); letter-spacing: -0.5px; }
-  .tx-delete {
-    background: none; border: none; color: var(--muted); cursor: pointer;
-    font-size: 0.68rem; padding: 2px 7px; border-radius: 4px;
-    transition: all 0.2s; letter-spacing: 0.3px;
-  }
-  .tx-delete:hover { color: var(--red); background: rgba(240,112,112,0.1); }
-  .filter-bar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
-  .filter-btn {
-    background: var(--card); border: 1px solid var(--border); color: var(--muted);
-    border-radius: 30px; padding: 6px 14px;
-    font-family: 'DM Sans', sans-serif; font-size: 0.78rem; font-weight: 500;
-    cursor: pointer; transition: all 0.2s;
-  }
-  .filter-btn:hover  { border-color: var(--accent); color: var(--text); }
-  .filter-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
-  .filter-search {
-    flex: 1; min-width: 140px; background: var(--card);
-    border: 1px solid var(--border); border-radius: 30px;
-    padding: 7px 16px; font-size: 0.82rem; color: var(--text);
-    font-family: 'DM Sans', sans-serif; outline: none; transition: border-color 0.2s;
-  }
-  .filter-search:focus { border-color: var(--accent); }
-  .filter-search::placeholder { color: var(--muted); }
-  .empty { text-align: center; padding: 50px 20px; color: var(--muted); }
-  .empty-icon { font-size: 3rem; margin-bottom: 12px; display: block; }
-  .empty-text { font-size: 0.88rem; }
-  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-  .section-title { font-family: 'DM Serif Display', serif; font-size: 1.4rem; color: var(--text); }
-  .section-count {
-    background: var(--card2); border: 1px solid var(--border);
-    border-radius: 20px; padding: 3px 12px; font-size: 0.75rem; color: var(--muted);
-  }
-  .month-group { margin-bottom: 24px; }
-  .month-label {
-    font-size: 0.7rem; font-weight: 600; letter-spacing: 1.5px;
-    text-transform: uppercase; color: var(--muted); margin-bottom: 10px; padding-left: 2px;
-  }
-  .divider { height: 1px; background: var(--border); margin: 20px 0; }
-  .ic-travel  { background: rgba(108,142,255,0.15); }
-  .ic-food    { background: rgba(232,184,109,0.15); }
-  .ic-auto    { background: rgba(130,200,240,0.15); }
-  .ic-cab     { background: rgba(255,180,80,0.15);  }
-  .ic-train   { background: rgba(120,200,160,0.15); }
-  .ic-bus     { background: rgba(200,140,220,0.15); }
-  .ic-drinks  { background: rgba(255,120,120,0.15); }
-  .ic-dance   { background: rgba(255,100,180,0.15); }
-  .ic-misc    { background: rgba(160,160,180,0.15); }
-  .ic-gift    { background: rgba(232,184,109,0.15); }
-  ::-webkit-scrollbar { width: 5px; height: 5px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+:root{
+  --bg:#0d0f14;--card:#1e2230;--card2:#252a3a;--border:#2e3347;
+  --gold:#e8b86d;--gold2:#f5d394;--accent:#6c8eff;--green:#4ecb8d;
+  --red:#f07070;--text:#f0f2f8;--muted:#8892aa;
+  --joseph:#6c8eff;--jyot:#e8b86d;--both:#4ecb8d;
+  --r:16px;--rs:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse 60% 40% at 80% 10%,rgba(108,142,255,.07) 0%,transparent 60%),
+             radial-gradient(ellipse 50% 50% at 10% 90%,rgba(232,184,109,.07) 0%,transparent 60%)}
 
-  /* Loading skeleton */
-  .skeleton {
-    background: linear-gradient(90deg, var(--card) 25%, var(--card2) 50%, var(--card) 75%);
-    background-size: 200% 100%;
-    animation: shimmer 1.4s infinite;
-    border-radius: var(--radius-sm);
-    height: 64px; margin-bottom: 10px;
-  }
-  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
-  .offline-banner {
-    background: rgba(240,112,112,0.1); border: 1px solid rgba(240,112,112,0.2);
-    border-radius: var(--radius-sm); padding: 10px 16px; margin-bottom: 16px;
-    font-size: 0.8rem; color: var(--red); text-align: center; display: none;
-  }
-  .offline-banner.show { display: block; }
+/* HEADER */
+.hdr{position:sticky;top:0;z-index:100;background:rgba(13,15,20,.95);backdrop-filter:blur(18px);
+  border-bottom:1px solid var(--border);padding:0 20px;display:flex;align-items:center;justify-content:space-between;height:60px}
+.logo{font-family:'DM Serif Display',serif;font-size:1.25rem;letter-spacing:-.5px;
+  background:linear-gradient(135deg,var(--gold),var(--accent));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.logo em{font-style:italic}
+.hdr-right{display:flex;gap:8px;align-items:center}
+.icon-btn{background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:var(--rs);
+  padding:7px 13px;font-family:'DM Sans',sans-serif;font-size:.78rem;font-weight:500;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:5px}
+.icon-btn:hover{border-color:var(--accent);color:var(--accent)}
+.icon-btn.green{background:linear-gradient(135deg,#2a7a5a,#2d9c72);border-color:transparent;color:#fff}
+.icon-btn.green:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(78,203,141,.3)}
+
+/* NAV */
+.nav{display:flex;gap:6px;padding:14px 16px 0;overflow-x:auto;scrollbar-width:none;position:relative;z-index:1}
+.nav::-webkit-scrollbar{display:none}
+.ntab{background:none;border:1px solid var(--border);color:var(--muted);border-radius:40px;padding:7px 18px;
+  font-family:'DM Sans',sans-serif;font-size:.82rem;font-weight:500;cursor:pointer;transition:all .2s;white-space:nowrap}
+.ntab:hover{border-color:var(--accent);color:var(--text)}
+.ntab.on{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 4px 14px rgba(108,142,255,.35)}
+.ntab.gon{background:var(--gold);border-color:var(--gold);color:#0d0f14;box-shadow:0 4px 14px rgba(232,184,109,.35)}
+
+/* MAIN */
+.main{max-width:760px;margin:0 auto;padding:20px 16px 80px;position:relative;z-index:1}
+.tab{display:none}.tab.on{display:block}
+
+/* CARDS */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:22px;margin-bottom:14px;transition:border-color .2s}
+.card:hover{border-color:#3a4060}
+.ctitle{font-family:'DM Serif Display',serif;font-size:1.05rem;margin-bottom:18px;color:var(--gold2);display:flex;align-items:center;gap:8px}
+
+/* BALANCE */
+.bgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+@media(max-width:460px){.bgrid{grid-template-columns:1fr}}
+.bc{background:var(--card2);border:1px solid var(--border);border-radius:var(--r);padding:18px;position:relative;overflow:hidden}
+.bc::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.bc.j::before{background:linear-gradient(90deg,var(--joseph),transparent)}
+.bc.jy::before{background:linear-gradient(90deg,var(--jyot),transparent)}
+.blbl{font-size:.68rem;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.bname{font-family:'DM Serif Display',serif;font-size:1.2rem;margin-bottom:5px}
+.bc.j .bname{color:var(--joseph)}.bc.jy .bname{color:var(--jyot)}
+.bamt{font-size:1.7rem;font-weight:700;letter-spacing:-1px;margin-bottom:3px}
+.bsub{font-size:.72rem;color:var(--muted)}
+
+/* SETTLEMENT */
+.setl{background:linear-gradient(135deg,rgba(232,184,109,.08),rgba(108,142,255,.08));
+  border:1px solid rgba(232,184,109,.2);border-radius:var(--r);padding:18px 22px;margin-bottom:14px;
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.slbl{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px}
+.stxt{font-family:'DM Serif Display',serif;font-size:1.15rem;color:var(--text)}
+.stxt .hi{color:var(--gold)}.stxt .am{color:var(--green);font-size:1.25rem}.stxt.ok{color:var(--green)}
+.sbadge{border-radius:30px;padding:5px 13px;font-size:.75rem;font-weight:600;
+  background:rgba(240,112,112,.12);border:1px solid rgba(240,112,112,.25);color:var(--red)}
+
+/* STATS */
+.srow{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+@media(max-width:460px){.srow{grid-template-columns:1fr 1fr}}
+.sc{background:var(--card);border:1px solid var(--border);border-radius:var(--rs);padding:14px;text-align:center}
+.sv{font-size:1.15rem;font-weight:700;letter-spacing:-.5px;margin-bottom:3px}
+.sl{font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:.8px}
+
+/* FORM */
+.fg{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:480px){.fg{grid-template-columns:1fr}}
+.fg .full{grid-column:1/-1}
+.flbl{font-size:.68rem;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:5px;display:block}
+.fi{background:var(--bg);border:1px solid var(--border);border-radius:var(--rs);color:var(--text);
+  font-family:'DM Sans',sans-serif;font-size:.9rem;padding:11px 13px;width:100%;
+  transition:border-color .2s,box-shadow .2s;outline:none;appearance:none;-webkit-appearance:none}
+.fi:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(108,142,255,.14)}
+select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238892aa' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center;padding-right:34px;cursor:pointer}
+select.fi option{background:#1e2230}
+textarea.fi{resize:vertical;min-height:70px}
+.pills{display:flex;gap:7px;flex-wrap:wrap;margin-top:2px}
+.pill{flex:1;min-width:80px;background:var(--bg);border:1px solid var(--border);border-radius:30px;
+  color:var(--muted);font-family:'DM Sans',sans-serif;font-size:.82rem;font-weight:500;
+  padding:9px 6px;cursor:pointer;transition:all .2s;text-align:center}
+.pill:hover{border-color:var(--accent);color:var(--text)}
+.pill.pj{background:var(--joseph);border-color:var(--joseph);color:#fff}
+.pill.pjy{background:var(--jyot);border-color:var(--jyot);color:#0d0f14}
+.pill.pb{background:var(--both);border-color:var(--both);color:#0d0f14}
+.sbtn{width:100%;margin-top:18px;border:none;border-radius:var(--rs);
+  font-family:'DM Sans',sans-serif;font-size:.95rem;font-weight:600;padding:13px;cursor:pointer;transition:all .2s}
+.sbtn.exp{background:linear-gradient(135deg,var(--accent),#4e6fef);color:#fff}
+.sbtn.exp:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(108,142,255,.4)}
+.sbtn.gft{background:linear-gradient(135deg,var(--gold),#c98a30);color:#0d0f14}
+.sbtn.gft:hover{box-shadow:0 6px 18px rgba(232,184,109,.4)}
+
+/* LIST */
+.txl{display:flex;flex-direction:column;gap:9px}
+.txi{background:var(--card2);border:1px solid var(--border);border-radius:var(--rs);
+  padding:12px 14px;display:flex;align-items:center;gap:12px;transition:border-color .2s;animation:si .25s ease}
+@keyframes si{from{opacity:0;transform:translateY(-7px)}to{opacity:1;transform:translateY(0)}}
+.txi:hover{border-color:#3a4060}
+.tic{width:40px;height:40px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+.tin{flex:1;min-width:0}
+.tcat{font-weight:600;font-size:.87rem;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tmet{font-size:.72rem;color:var(--muted);display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+.tbdg{border-radius:20px;padding:1px 7px;font-size:.65rem;font-weight:600}
+.tbdg.joseph{background:rgba(108,142,255,.15);color:var(--joseph)}
+.tbdg.jyot{background:rgba(232,184,109,.15);color:var(--jyot)}
+.tbdg.both{background:rgba(78,203,141,.15);color:var(--both)}
+.tr{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0}
+.tamt{font-size:1rem;font-weight:700;letter-spacing:-.5px}
+.tdel{background:none;border:none;color:var(--muted);cursor:pointer;font-size:.65rem;
+  padding:2px 6px;border-radius:4px;transition:all .2s;font-family:'DM Sans',sans-serif}
+.tdel:hover{color:var(--red);background:rgba(240,112,112,.1)}
+
+/* FILTER */
+.fbar{display:flex;gap:7px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
+.fbtn{background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:30px;
+  padding:5px 13px;font-family:'DM Sans',sans-serif;font-size:.75rem;font-weight:500;cursor:pointer;transition:all .2s}
+.fbtn:hover{border-color:var(--accent);color:var(--text)}
+.fbtn.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.fsrch{flex:1;min-width:120px;background:var(--card);border:1px solid var(--border);border-radius:30px;
+  padding:6px 14px;font-size:.8rem;color:var(--text);font-family:'DM Sans',sans-serif;outline:none;transition:border-color .2s}
+.fsrch:focus{border-color:var(--accent)}.fsrch::placeholder{color:var(--muted)}
+
+/* MISC */
+.shdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.stitle{font-family:'DM Serif Display',serif;font-size:1.35rem}
+.scnt{background:var(--card2);border:1px solid var(--border);border-radius:20px;padding:2px 11px;font-size:.72rem;color:var(--muted)}
+.mgrp{margin-bottom:22px}
+.mlbl{font-size:.67rem;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:9px;padding-left:2px}
+.dvd{height:1px;background:var(--border);margin:18px 0}
+.empty{text-align:center;padding:44px 20px;color:var(--muted)}
+.eico{font-size:2.8rem;margin-bottom:10px;display:block}.etxt{font-size:.85rem}
+
+/* TOAST */
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(80px);
+  background:var(--card2);border:1px solid var(--border);border-radius:40px;padding:11px 22px;
+  font-size:.85rem;font-weight:500;color:var(--green);box-shadow:0 8px 28px rgba(0,0,0,.4);
+  z-index:9999;transition:transform .3s cubic-bezier(.34,1.56,.64,1);white-space:nowrap;pointer-events:none}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+/* SYNC MODAL */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:28px;max-width:480px;width:100%}
+.modal h2{font-family:'DM Serif Display',serif;font-size:1.3rem;margin-bottom:8px;color:var(--gold2)}
+.modal p{font-size:.85rem;color:var(--muted);margin-bottom:18px;line-height:1.6}
+.modal textarea{background:var(--bg);border:1px solid var(--border);border-radius:var(--rs);
+  color:var(--text);font-family:monospace;font-size:.78rem;padding:12px;width:100%;
+  height:110px;resize:none;outline:none;transition:border-color .2s}
+.modal textarea:focus{border-color:var(--accent)}
+.mbtns{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.mbtn{flex:1;padding:11px;border:none;border-radius:var(--rs);font-family:'DM Sans',sans-serif;
+  font-size:.88rem;font-weight:600;cursor:pointer;transition:all .2s}
+.mbtn.pri{background:linear-gradient(135deg,var(--accent),#4e6fef);color:#fff}
+.mbtn.pri:hover{box-shadow:0 4px 14px rgba(108,142,255,.4)}
+.mbtn.sec{background:var(--card2);border:1px solid var(--border);color:var(--text)}
+.mbtn.sec:hover{border-color:var(--accent)}
+.mbtn.danger{background:rgba(240,112,112,.12);border:1px solid rgba(240,112,112,.25);color:var(--red)}
+
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 </style>
 </head>
 <body>
 
-<div class="header">
-  <div class="logo">Joseph <span>&</span> Jyot</div>
-  <div class="header-actions">
-    <div class="sync-status" id="sync-status">
-      <div class="sync-dot syncing" id="sync-dot"></div>
-      <span id="sync-label">Connecting…</span>
-    </div>
-    <button class="btn-export" onclick="exportExcel()">⬇ Excel</button>
+<div class="hdr">
+  <div class="logo">Joseph <em>&</em> Jyot</div>
+  <div class="hdr-right">
+    <button class="icon-btn" onclick="openSync()">🔄 Sync</button>
+    <button class="icon-btn green" onclick="exportExcel()">⬇ Excel</button>
   </div>
 </div>
 
 <div class="nav">
-  <button class="nav-tab active" onclick="switchTab('dashboard',this)">📊 Dashboard</button>
-  <button class="nav-tab" onclick="switchTab('add',this)">＋ Add Expense</button>
-  <button class="nav-tab" onclick="switchTab('history',this)">🧾 History</button>
-  <button class="nav-tab gifts-tab" onclick="switchTab('gifts',this)">🎁 Gifts</button>
+  <button class="ntab on"  id="nt-dashboard" onclick="showTab('dashboard')">📊 Dashboard</button>
+  <button class="ntab"     id="nt-add"        onclick="showTab('add')">＋ Add Expense</button>
+  <button class="ntab"     id="nt-history"    onclick="showTab('history')">🧾 History</button>
+  <button class="ntab"     id="nt-gifts"      onclick="showTab('gifts')">🎁 Gifts</button>
 </div>
 
 <div class="main">
 
-  <div class="offline-banner" id="offline-banner">
-    ⚠️ Could not reach the server — showing cached data. Changes will sync when connection is restored.
-  </div>
-
   <!-- DASHBOARD -->
-  <div class="tab-content active" id="tab-dashboard">
-    <div class="balance-grid" id="balance-cards"></div>
-    <div id="settlement-banner"></div>
-    <div class="stats-row" id="stats-row"></div>
+  <div class="tab on" id="tab-dashboard">
+    <div class="bgrid" id="balance-cards"></div>
+    <div id="settlement"></div>
+    <div class="srow" id="stats"></div>
     <div class="card">
-      <div class="card-title">📅 Recent Activity</div>
-      <div id="recent-list"></div>
+      <div class="ctitle">📅 Recent Activity</div>
+      <div id="recent"></div>
     </div>
   </div>
 
   <!-- ADD EXPENSE -->
-  <div class="tab-content" id="tab-add">
+  <div class="tab" id="tab-add">
     <div class="card">
-      <div class="card-title">＋ New Expense</div>
-      <div class="form-grid">
-        <div class="form-group">
-          <label>Date</label>
-          <input type="date" id="exp-date">
+      <div class="ctitle">＋ New Expense</div>
+      <div class="fg">
+        <div>
+          <label class="flbl">Date</label>
+          <input class="fi" type="date" id="e-date">
         </div>
-        <div class="form-group">
-          <label>Category</label>
-          <select id="exp-category">
+        <div>
+          <label class="flbl">Category</label>
+          <select class="fi" id="e-cat">
             <option value="">Select…</option>
             <option>Travel</option><option>Food</option><option>Auto</option>
             <option>Cab</option><option>Train</option><option>Bus</option>
             <option>Drinks</option><option>Dance</option><option>Misc</option>
           </select>
         </div>
-        <div class="form-group">
-          <label>Paid By</label>
-          <select id="exp-paidby">
+        <div>
+          <label class="flbl">Paid By</label>
+          <select class="fi" id="e-paid">
             <option value="">Who paid?</option>
             <option>Joseph</option><option>Jyot</option>
           </select>
         </div>
-        <div class="form-group">
-          <label>Amount (₹)</label>
-          <input type="number" id="exp-amount" placeholder="0.00" min="0" step="0.01">
+        <div>
+          <label class="flbl">Amount (₹)</label>
+          <input class="fi" type="number" id="e-amt" placeholder="0.00" min="0" step="0.01">
         </div>
-        <div class="form-group full">
-          <label>For Whom</label>
-          <div class="pill-group">
-            <button class="pill joseph-pill" onclick="selectPill(this,'Joseph')">Joseph</button>
-            <button class="pill jyot-pill"   onclick="selectPill(this,'Jyot')">Jyot</button>
-            <button class="pill both-pill"   onclick="selectPill(this,'Both')">Both — Shared</button>
+        <div class="full">
+          <label class="flbl">For Whom</label>
+          <div class="pills">
+            <button class="pill" id="p-joseph" onclick="setPill('Joseph')">Joseph</button>
+            <button class="pill" id="p-jyot"   onclick="setPill('Jyot')">Jyot</button>
+            <button class="pill" id="p-both"   onclick="setPill('Both')">Both — Shared</button>
           </div>
-          <input type="hidden" id="exp-forwhom" value="">
+          <input type="hidden" id="e-for">
         </div>
-        <div class="form-group full">
-          <label>Notes (optional)</label>
-          <textarea id="exp-notes" placeholder="Add any details…"></textarea>
+        <div class="full">
+          <label class="flbl">Notes (optional)</label>
+          <textarea class="fi" id="e-notes" placeholder="Add any details…"></textarea>
         </div>
       </div>
-      <button class="btn-submit" id="btn-exp-submit" onclick="submitExpense()">Submit Expense</button>
+      <button class="sbtn exp" onclick="addExpense()">Submit Expense</button>
     </div>
   </div>
 
   <!-- HISTORY -->
-  <div class="tab-content" id="tab-history">
-    <div class="section-header">
-      <div class="section-title">All Expenses</div>
-      <div class="section-count" id="history-count">0</div>
+  <div class="tab" id="tab-history">
+    <div class="shdr">
+      <div class="stitle">All Expenses</div>
+      <div class="scnt" id="h-count">0</div>
     </div>
-    <div class="filter-bar">
-      <button class="filter-btn active" onclick="filterHistory('All',this)">All</button>
-      <button class="filter-btn" onclick="filterHistory('Joseph',this)">Joseph</button>
-      <button class="filter-btn" onclick="filterHistory('Jyot',this)">Jyot</button>
-      <button class="filter-btn" onclick="filterHistory('Both',this)">Shared</button>
-      <input class="filter-search" type="text" placeholder="🔍 Search…" oninput="searchHistory(this.value)">
+    <div class="fbar">
+      <button class="fbtn on" onclick="setFilter('All',this)">All</button>
+      <button class="fbtn"    onclick="setFilter('Joseph',this)">Joseph</button>
+      <button class="fbtn"    onclick="setFilter('Jyot',this)">Jyot</button>
+      <button class="fbtn"    onclick="setFilter('Shared',this)">Shared</button>
+      <input class="fsrch" placeholder="🔍 Search…" oninput="setSearch(this.value)">
     </div>
     <div id="history-list"></div>
   </div>
 
   <!-- GIFTS -->
-  <div class="tab-content" id="tab-gifts">
+  <div class="tab" id="tab-gifts">
     <div class="card">
-      <div class="card-title">🎁 Add a Gift</div>
-      <div class="form-grid">
-        <div class="form-group">
-          <label>Date</label>
-          <input type="date" id="gift-date">
+      <div class="ctitle">🎁 Add a Gift</div>
+      <div class="fg">
+        <div>
+          <label class="flbl">Date</label>
+          <input class="fi" type="date" id="g-date">
         </div>
-        <div class="form-group">
-          <label>Amount (₹)</label>
-          <input type="number" id="gift-amount" placeholder="0.00" min="0" step="0.01">
+        <div>
+          <label class="flbl">Amount (₹)</label>
+          <input class="fi" type="number" id="g-amt" placeholder="0.00" min="0" step="0.01">
         </div>
-        <div class="form-group">
-          <label>From</label>
-          <select id="gift-from">
+        <div>
+          <label class="flbl">From</label>
+          <select class="fi" id="g-from">
             <option value="">Who gifted?</option>
             <option>Joseph</option><option>Jyot</option>
           </select>
         </div>
-        <div class="form-group">
-          <label>To</label>
-          <select id="gift-to">
+        <div>
+          <label class="flbl">To</label>
+          <select class="fi" id="g-to">
             <option value="">Gifted to?</option>
             <option>Joseph</option><option>Jyot</option>
           </select>
         </div>
-        <div class="form-group full">
-          <label>Reason / Notes</label>
-          <textarea id="gift-notes" placeholder="Birthday, anniversary, just because…"></textarea>
+        <div class="full">
+          <label class="flbl">Reason / Notes</label>
+          <textarea class="fi" id="g-notes" placeholder="Birthday, anniversary, just because…"></textarea>
         </div>
       </div>
-      <button class="btn-submit btn-gift-submit" id="btn-gift-submit" onclick="submitGift()">Add Gift 🎁</button>
+      <button class="sbtn gft" onclick="addGift()">Add Gift 🎁</button>
     </div>
-    <div class="divider"></div>
-    <div class="section-header">
-      <div class="section-title">Gift History</div>
-      <div class="section-count" id="gifts-count">0</div>
+    <div class="dvd"></div>
+    <div class="shdr">
+      <div class="stitle">Gift History</div>
+      <div class="scnt" id="g-count">0</div>
     </div>
-    <div id="gifts-list"></div>
+    <div id="gift-list"></div>
   </div>
 
+</div><!-- /main -->
+
+<!-- SYNC MODAL -->
+<div class="overlay" id="sync-modal" style="display:none">
+  <div class="modal">
+    <h2>🔄 Sync Between Devices</h2>
+    <p>Copy the code below and paste it on the other device (or share it with Jyot). On the other device, open Sync and click <strong>Import Code</strong>.</p>
+    <textarea id="sync-code" readonly></textarea>
+    <div class="mbtns">
+      <button class="mbtn pri" onclick="copyCode()">📋 Copy Code</button>
+      <button class="mbtn sec" onclick="showImport()">📥 Import Code</button>
+      <button class="mbtn sec" onclick="closeSync()">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="import-modal" style="display:none">
+  <div class="modal">
+    <h2>📥 Import Data</h2>
+    <p>Paste the sync code from the other device. This will <strong>merge</strong> both devices' data together — nothing gets lost.</p>
+    <textarea id="import-code" placeholder="Paste sync code here…"></textarea>
+    <div class="mbtns">
+      <button class="mbtn pri" onclick="importCode()">Import & Merge</button>
+      <button class="mbtn sec" onclick="closeImport()">Cancel</button>
+    </div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script>
-// ─── CONFIG ──────────────────────────────────────────────────────────────────
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbyPp2fUfcwcUYX0lkrGwHgMd1iiz3kYq0atGWfhCD8e6tKLZoNxvG6GG340rW0CqyXc8g/exec';
+// ═══════════════════════════════════════════════
+//  DATABASE  — localStorage (instant, offline-first)
+//  SYNC      — Export/Import JSON codes (copy-paste or share)
+//  Works on any device, any browser, GitHub Pages
+// ═══════════════════════════════════════════════
 
-// ─── LOCAL CACHE (fallback) ───────────────────────────────────────────────────
-const DB_KEY   = 'jj_expenses_v1';
-const GIFT_KEY = 'jj_gifts_v1';
-const loadExpenses = () => { try { return JSON.parse(localStorage.getItem(DB_KEY)) || []; } catch(e) { return []; } };
-const saveExpenses = d => localStorage.setItem(DB_KEY, JSON.stringify(d));
-const loadGifts    = () => { try { return JSON.parse(localStorage.getItem(GIFT_KEY)) || []; } catch(e) { return []; } };
-const saveGifts    = d => localStorage.setItem(GIFT_KEY, JSON.stringify(d));
+const KEY_E = 'jj_exp_v2';
+const KEY_G = 'jj_gift_v2';
 
-// ─── HELPERS ─────────────────────────────────────────────────────────────────
-const CAT_ICONS = { Travel:'✈️',Food:'🍜',Auto:'🚗',Cab:'🚕',Train:'🚆',Bus:'🚌',Drinks:'🍺',Dance:'💃',Misc:'📦',Gift:'🎁' };
-const CAT_CLS   = { Travel:'ic-travel',Food:'ic-food',Auto:'ic-auto',Cab:'ic-cab',Train:'ic-train',Bus:'ic-bus',Drinks:'ic-drinks',Dance:'ic-dance',Misc:'ic-misc',Gift:'ic-gift' };
+const load  = k => { try { return JSON.parse(localStorage.getItem(k)) || []; } catch { return []; } };
+const save  = (k,v) => localStorage.setItem(k, JSON.stringify(v));
 
-const fmt = n => '₹' + parseFloat(n||0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
-const fmtDate = d => { if(!d) return ''; const dt = new Date(d+'T00:00:00'); return dt.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}); };
-const monthKey = d => { if(!d) return 'Unknown'; const dt = new Date(d+'T00:00:00'); return dt.toLocaleDateString('en-IN',{month:'long',year:'numeric'}); };
-const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2);
-const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+let expenses = load(KEY_E);
+let gifts    = load(KEY_G);
 
-let toastTimer;
-function showToast(msg, color) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.style.color = color || 'var(--green)';
-  t.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+// ── Helpers ────────────────────────────────────
+const ICONS = {Travel:'✈️',Food:'🍜',Auto:'🚗',Cab:'🚕',Train:'🚆',Bus:'🚌',Drinks:'🍺',Dance:'💃',Misc:'📦'};
+const CLRS  = {Travel:'rgba(108,142,255,.18)',Food:'rgba(232,184,109,.18)',Auto:'rgba(130,200,240,.18)',
+               Cab:'rgba(255,180,80,.18)',Train:'rgba(120,200,160,.18)',Bus:'rgba(200,140,220,.18)',
+               Drinks:'rgba(255,120,120,.18)',Dance:'rgba(255,100,180,.18)',Misc:'rgba(160,160,180,.18)'};
+
+const fmt      = n => '₹' + parseFloat(n||0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtDate  = d => { if(!d) return ''; const dt=new Date(d+'T00:00:00'); return dt.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}); };
+const monthKey = d => { if(!d) return 'Unknown'; const dt=new Date(d+'T00:00:00'); return dt.toLocaleDateString('en-IN',{month:'long',year:'numeric'}); };
+const uid      = () => Date.now().toString(36)+Math.random().toString(36).slice(2);
+const today    = () => new Date().toISOString().split('T')[0];
+const esc      = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+let toastT;
+function toast(msg, color) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.style.color = color || 'var(--green)';
+  el.classList.add('show'); clearTimeout(toastT);
+  toastT = setTimeout(() => el.classList.remove('show'), 2800);
 }
 
-function setSyncStatus(state, label) {
-  const dot = document.getElementById('sync-dot');
-  const lbl = document.getElementById('sync-label');
-  dot.className = 'sync-dot ' + state;
-  lbl.textContent = label;
-}
-
-function showOffline(show) {
-  document.getElementById('offline-banner').classList.toggle('show', show);
-}
-
-// ─── API CALLS ────────────────────────────────────────────────────────────────
-// GAS redirects to a script.googleusercontent.com URL — redirect:'follow' is essential.
-// For writes we use GET with action params because GAS cross-origin POST bodies
-// are unreliable; all mutations are routed through doGet with a 'method' param.
-async function gasRequest(params) {
-  const url = new URL(GAS_URL);
-  Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, String(v)));
-  const res = await fetch(url.toString(), { redirect: 'follow' });
-  if (!res.ok) throw new Error('HTTP ' + res.status);
-  const text = await res.text();
-  try { return JSON.parse(text); }
-  catch(e) { throw new Error('Bad JSON: ' + text.slice(0, 120)); }
-}
-
-// All mutations go through GET params so CORS + redirects work cleanly
-async function gasPost(payload) {
-  return gasRequest(payload);
-}
-
-// ─── FETCH ALL DATA FROM SHEETS ───────────────────────────────────────────────
-async function fetchFromSheets() {
-  setSyncStatus('syncing', 'Syncing…');
-  try {
-    const data = await gasRequest({ action: 'getAll' });
-    if (data.expenses) {
-      saveExpenses(data.expenses);
-    }
-    if (data.gifts) {
-      saveGifts(data.gifts);
-    }
-    setSyncStatus('synced', 'Synced ✓');
-    showOffline(false);
-    return true;
-  } catch(e) {
-    setSyncStatus('error', 'Offline');
-    showOffline(true);
-    console.warn('GAS fetch failed:', e);
-    return false;
-  }
-}
-
-// ─── ADD EXPENSE TO SHEETS ────────────────────────────────────────────────────
-async function pushExpenseToSheets(expense) {
-  try {
-    await gasPost({ action: 'addExpense', ...expense });
-    return true;
-  } catch(e) {
-    console.warn('GAS push failed:', e);
-    return false;
-  }
-}
-
-async function deleteExpenseFromSheets(id) {
-  try {
-    await gasPost({ action: 'deleteExpense', id });
-    return true;
-  } catch(e) {
-    console.warn('GAS delete failed:', e);
-    return false;
-  }
-}
-
-async function pushGiftToSheets(gift) {
-  try {
-    await gasPost({ action: 'addGift', ...gift });
-    return true;
-  } catch(e) {
-    console.warn('GAS push failed:', e);
-    return false;
-  }
-}
-
-async function deleteGiftFromSheets(id) {
-  try {
-    await gasPost({ action: 'deleteGift', id });
-    return true;
-  } catch(e) {
-    console.warn('GAS delete failed:', e);
-    return false;
-  }
-}
-
-// ─── TAB SWITCHING ────────────────────────────────────────────────────────────
-function switchTab(name, btn) {
-  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
-  document.getElementById('tab-'+name).classList.add('active');
-  btn.classList.add('active');
+// ── Tabs ───────────────────────────────────────
+function showTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
+  document.querySelectorAll('.ntab').forEach(b => b.classList.remove('on','gon'));
+  document.getElementById('tab-'+name).classList.add('on');
+  const btn = document.getElementById('nt-'+name);
+  btn.classList.add(name==='gifts'?'gon':'on');
   if (name==='dashboard') renderDashboard();
   if (name==='history')   renderHistory();
   if (name==='gifts')     renderGifts();
 }
 
-function selectPill(el, value) {
-  document.querySelectorAll('#tab-add .pill').forEach(p => p.classList.remove('active'));
-  el.classList.add('active');
-  document.getElementById('exp-forwhom').value = value;
+// ── For-whom pills ─────────────────────────────
+let currentFor = '';
+function setPill(val) {
+  currentFor = val;
+  document.getElementById('e-for').value = val;
+  document.getElementById('p-joseph').className = 'pill' + (val==='Joseph'?' pj':'');
+  document.getElementById('p-jyot').className   = 'pill' + (val==='Jyot'  ?' pjy':'');
+  document.getElementById('p-both').className   = 'pill' + (val==='Both'  ?' pb':'');
 }
 
-// ─── SUBMIT EXPENSE ───────────────────────────────────────────────────────────
-async function submitExpense() {
-  const date     = document.getElementById('exp-date').value;
-  const category = document.getElementById('exp-category').value;
-  const paidby   = document.getElementById('exp-paidby').value;
-  const amount   = parseFloat(document.getElementById('exp-amount').value);
-  const forwhom  = document.getElementById('exp-forwhom').value;
-  const notes    = document.getElementById('exp-notes').value.trim();
+// ── Add Expense ────────────────────────────────
+function addExpense() {
+  const date    = document.getElementById('e-date').value;
+  const cat     = document.getElementById('e-cat').value;
+  const paidby  = document.getElementById('e-paid').value;
+  const amount  = parseFloat(document.getElementById('e-amt').value);
+  const forwhom = document.getElementById('e-for').value;
+  const notes   = document.getElementById('e-notes').value.trim();
 
-  if (!date)          { showToast('⚠️  Pick a date','var(--red)'); return; }
-  if (!category)      { showToast('⚠️  Choose a category','var(--red)'); return; }
-  if (!paidby)        { showToast('⚠️  Select who paid','var(--red)'); return; }
-  if (!amount||amount<=0) { showToast('⚠️  Enter a valid amount','var(--red)'); return; }
-  if (!forwhom)       { showToast('⚠️  Select who it\'s for','var(--red)'); return; }
+  if (!date)            { toast('⚠️ Pick a date','var(--red)'); return; }
+  if (!cat)             { toast('⚠️ Choose a category','var(--red)'); return; }
+  if (!paidby)          { toast('⚠️ Select who paid','var(--red)'); return; }
+  if (!amount||amount<=0){ toast('⚠️ Enter a valid amount','var(--red)'); return; }
+  if (!forwhom)         { toast('⚠️ Select who it\'s for','var(--red)'); return; }
 
-  const btn = document.getElementById('btn-exp-submit');
-  btn.disabled = true; btn.textContent = 'Saving…';
+  expenses.unshift({ id:uid(), date, category:cat, paidby, amount, forwhom, notes });
+  save(KEY_E, expenses);
 
-  const expense = { id:uid(), date, category, paidby, amount, forwhom, notes };
+  document.getElementById('e-date').value  = today();
+  document.getElementById('e-cat').value   = '';
+  document.getElementById('e-paid').value  = '';
+  document.getElementById('e-amt').value   = '';
+  document.getElementById('e-notes').value = '';
+  setPill('');
 
-  // Optimistic local save
-  const expenses = loadExpenses();
-  expenses.unshift(expense);
-  saveExpenses(expenses);
-  renderDashboard();
-
-  setSyncStatus('syncing','Saving…');
-  const ok = await pushExpenseToSheets(expense);
-  if (ok) {
-    setSyncStatus('synced','Synced ✓');
-    showToast('✅  Expense saved to Sheets!');
-    // Re-fetch to stay in sync (handles row IDs etc)
-    await fetchFromSheets();
-  } else {
-    setSyncStatus('error','Offline — saved locally');
-    showToast('⚠️  Saved locally (offline)','var(--gold)');
-  }
-
-  // Reset form
-  document.getElementById('exp-category').value='';
-  document.getElementById('exp-paidby').value='';
-  document.getElementById('exp-amount').value='';
-  document.getElementById('exp-notes').value='';
-  document.getElementById('exp-forwhom').value='';
-  document.querySelectorAll('#tab-add .pill').forEach(p => p.classList.remove('active'));
-  document.getElementById('exp-date').value = new Date().toISOString().split('T')[0];
-
-  btn.disabled = false; btn.textContent = 'Submit Expense';
+  toast('✅ Expense saved!');
   renderDashboard();
 }
 
-// ─── SUBMIT GIFT ──────────────────────────────────────────────────────────────
-async function submitGift() {
-  const date   = document.getElementById('gift-date').value;
-  const amount = parseFloat(document.getElementById('gift-amount').value);
-  const from   = document.getElementById('gift-from').value;
-  const to     = document.getElementById('gift-to').value;
-  const notes  = document.getElementById('gift-notes').value.trim();
+// ── Add Gift ───────────────────────────────────
+function addGift() {
+  const date   = document.getElementById('g-date').value;
+  const amount = parseFloat(document.getElementById('g-amt').value);
+  const from   = document.getElementById('g-from').value;
+  const to     = document.getElementById('g-to').value;
+  const notes  = document.getElementById('g-notes').value.trim();
 
-  if (!date)          { showToast('⚠️  Pick a date','var(--red)'); return; }
-  if (!amount||amount<=0) { showToast('⚠️  Enter an amount','var(--red)'); return; }
-  if (!from)          { showToast('⚠️  Who gifted?','var(--red)'); return; }
-  if (!to)            { showToast('⚠️  Gifted to whom?','var(--red)'); return; }
-  if (from===to)      { showToast('⚠️  From and To can\'t be the same','var(--red)'); return; }
+  if (!date)              { toast('⚠️ Pick a date','var(--red)'); return; }
+  if (!amount||amount<=0) { toast('⚠️ Enter an amount','var(--red)'); return; }
+  if (!from)              { toast('⚠️ Who gifted?','var(--red)'); return; }
+  if (!to)                { toast('⚠️ Gifted to whom?','var(--red)'); return; }
+  if (from===to)          { toast('⚠️ From and To can\'t be the same','var(--red)'); return; }
 
-  const btn = document.getElementById('btn-gift-submit');
-  btn.disabled = true; btn.textContent = 'Saving…';
+  gifts.unshift({ id:uid(), date, amount, from, to, notes });
+  save(KEY_G, gifts);
 
-  const gift = { id:uid(), date, amount, from, to, notes };
-  const gifts = loadGifts();
-  gifts.unshift(gift);
-  saveGifts(gifts);
-  renderGifts();
+  document.getElementById('g-date').value  = today();
+  document.getElementById('g-amt').value   = '';
+  document.getElementById('g-from').value  = '';
+  document.getElementById('g-to').value    = '';
+  document.getElementById('g-notes').value = '';
 
-  setSyncStatus('syncing','Saving…');
-  const ok = await pushGiftToSheets(gift);
-  if (ok) {
-    setSyncStatus('synced','Synced ✓');
-    showToast('🎁  Gift saved to Sheets!');
-    await fetchFromSheets();
-  } else {
-    setSyncStatus('error','Offline — saved locally');
-    showToast('⚠️  Saved locally (offline)','var(--gold)');
-  }
-
-  document.getElementById('gift-amount').value='';
-  document.getElementById('gift-from').value='';
-  document.getElementById('gift-to').value='';
-  document.getElementById('gift-notes').value='';
-  document.getElementById('gift-date').value = new Date().toISOString().split('T')[0];
-
-  btn.disabled = false; btn.textContent = 'Add Gift 🎁';
+  toast('🎁 Gift saved!');
   renderGifts();
 }
 
-// ─── DELETE ───────────────────────────────────────────────────────────────────
-async function deleteExpense(id) {
+// ── Delete ─────────────────────────────────────
+function delExp(id) {
   if (!confirm('Remove this expense?')) return;
-  saveExpenses(loadExpenses().filter(e => e.id!==id));
-  renderHistory(); renderDashboard();
-  showToast('🗑  Removed');
-  setSyncStatus('syncing','Syncing…');
-  const ok = await deleteExpenseFromSheets(id);
-  if (ok) {
-    setSyncStatus('synced','Synced ✓');
-    await fetchFromSheets();
-    renderHistory(); renderDashboard();
-  } else {
-    setSyncStatus('error','Offline');
-  }
+  expenses = expenses.filter(e => e.id !== id);
+  save(KEY_E, expenses);
+  renderDashboard(); renderHistory();
+  toast('🗑 Removed');
 }
-
-async function deleteGift(id) {
+function delGift(id) {
   if (!confirm('Remove this gift?')) return;
-  saveGifts(loadGifts().filter(g => g.id!==id));
+  gifts = gifts.filter(g => g.id !== id);
+  save(KEY_G, gifts);
   renderGifts();
-  showToast('🗑  Removed');
-  setSyncStatus('syncing','Syncing…');
-  const ok = await deleteGiftFromSheets(id);
-  if (ok) {
-    setSyncStatus('synced','Synced ✓');
-    await fetchFromSheets();
-    renderGifts();
-  } else {
-    setSyncStatus('error','Offline');
-  }
+  toast('🗑 Removed');
 }
 
-// ─── RENDER ───────────────────────────────────────────────────────────────────
-function expenseHTML(e) {
-  const icon = CAT_ICONS[e.category]||'📦';
-  const cls  = CAT_CLS[e.category]||'ic-misc';
-  const fw   = (e.forwhom||'').toLowerCase();
-  const pb   = (e.paidby||'').toLowerCase();
-  return `<div class="tx-item">
-    <div class="tx-icon ${cls}">${icon}</div>
-    <div class="tx-info">
-      <div class="tx-category">${esc(e.category)}${e.notes?` <small style="color:var(--muted);font-weight:400">— ${esc(e.notes)}</small>`:''}</div>
-      <div class="tx-meta">
-        ${fmtDate(e.date)}
-        <span class="tx-badge ${fw}">${esc(e.forwhom)}</span>
-        <span class="tx-badge ${pb}">Paid: ${esc(e.paidby)}</span>
-      </div>
+// ── Expense HTML ───────────────────────────────
+function expHTML(e) {
+  const fw = (e.forwhom||'').toLowerCase();
+  const pb = (e.paidby||'').toLowerCase();
+  const bg = CLRS[e.category] || 'rgba(160,160,180,.18)';
+  return `<div class="txi">
+    <div class="tic" style="background:${bg}">${ICONS[e.category]||'📦'}</div>
+    <div class="tin">
+      <div class="tcat">${esc(e.category)}${e.notes?` <small style="color:var(--muted);font-weight:400">— ${esc(e.notes)}</small>`:''}</div>
+      <div class="tmet">${fmtDate(e.date)}<span class="tbdg ${fw}">${esc(e.forwhom)}</span><span class="tbdg ${pb}">Paid: ${esc(e.paidby)}</span></div>
     </div>
-    <div class="tx-right">
-      <div class="tx-amount">${fmt(e.amount)}</div>
-      <button class="tx-delete" onclick="deleteExpense('${esc(e.id)}')">✕ remove</button>
+    <div class="tr">
+      <div class="tamt">${fmt(e.amount)}</div>
+      <button class="tdel" onclick="delExp('${esc(e.id)}')">✕ remove</button>
     </div>
   </div>`;
 }
 
 function giftHTML(g) {
-  return `<div class="tx-item">
-    <div class="tx-icon ic-gift">🎁</div>
-    <div class="tx-info">
-      <div class="tx-category">${esc(g.from)} → ${esc(g.to)}${g.notes?` <small style="color:var(--muted);font-weight:400">— ${esc(g.notes)}</small>`:''}</div>
-      <div class="tx-meta">${fmtDate(g.date)}</div>
+  return `<div class="txi">
+    <div class="tic" style="background:rgba(232,184,109,.18)">🎁</div>
+    <div class="tin">
+      <div class="tcat">${esc(g.from)} → ${esc(g.to)}${g.notes?` <small style="color:var(--muted);font-weight:400">— ${esc(g.notes)}</small>`:''}</div>
+      <div class="tmet">${fmtDate(g.date)}</div>
     </div>
-    <div class="tx-right">
-      <div class="tx-amount">${fmt(g.amount)}</div>
-      <button class="tx-delete" onclick="deleteGift('${esc(g.id)}')">✕ remove</button>
+    <div class="tr">
+      <div class="tamt">${fmt(g.amount)}</div>
+      <button class="tdel" onclick="delGift('${esc(g.id)}')">✕ remove</button>
     </div>
   </div>`;
 }
 
+// ── Render Dashboard ───────────────────────────
 function renderDashboard() {
-  const expenses = loadExpenses();
-  const totalShared    = expenses.filter(e=>e.forwhom==='Both').reduce((s,e)=>s+parseFloat(e.amount||0),0);
-  const josephPaid     = expenses.filter(e=>e.forwhom==='Both'&&e.paidby==='Joseph').reduce((s,e)=>s+parseFloat(e.amount||0),0);
-  const jyotPaid       = expenses.filter(e=>e.forwhom==='Both'&&e.paidby==='Jyot').reduce((s,e)=>s+parseFloat(e.amount||0),0);
-  const fairShare      = totalShared/2;
-  const josephOwes     = Math.max(0, fairShare-josephPaid);
-  const jyotOwes       = Math.max(0, fairShare-jyotPaid);
-  const josephPersonal = expenses.filter(e=>e.forwhom==='Joseph').reduce((s,e)=>s+parseFloat(e.amount||0),0);
-  const jyotPersonal   = expenses.filter(e=>e.forwhom==='Jyot').reduce((s,e)=>s+parseFloat(e.amount||0),0);
+  const total  = expenses.filter(e=>e.forwhom==='Both').reduce((s,e)=>s+parseFloat(e.amount||0),0);
+  const jPaid  = expenses.filter(e=>e.forwhom==='Both'&&e.paidby==='Joseph').reduce((s,e)=>s+parseFloat(e.amount||0),0);
+  const jyPaid = expenses.filter(e=>e.forwhom==='Both'&&e.paidby==='Jyot').reduce((s,e)=>s+parseFloat(e.amount||0),0);
+  const fair   = total/2;
+  const jOwes  = Math.max(0,fair-jPaid);
+  const jyOwes = Math.max(0,fair-jyPaid);
+  const jPers  = expenses.filter(e=>e.forwhom==='Joseph').reduce((s,e)=>s+parseFloat(e.amount||0),0);
+  const jyPers = expenses.filter(e=>e.forwhom==='Jyot').reduce((s,e)=>s+parseFloat(e.amount||0),0);
 
   document.getElementById('balance-cards').innerHTML = `
-    <div class="balance-card joseph">
-      <div class="balance-label">Joseph</div>
-      <div class="balance-name">Joseph</div>
-      <div class="balance-amount">${fmt(josephPaid+josephPersonal)}</div>
-      <div class="balance-sub">Shared: ${fmt(josephPaid)} &nbsp;·&nbsp; Personal: ${fmt(josephPersonal)}</div>
+    <div class="bc j">
+      <div class="blbl">Joseph</div><div class="bname">Joseph</div>
+      <div class="bamt">${fmt(jPaid+jPers)}</div>
+      <div class="bsub">Shared: ${fmt(jPaid)} · Personal: ${fmt(jPers)}</div>
     </div>
-    <div class="balance-card jyot">
-      <div class="balance-label">Jyot</div>
-      <div class="balance-name">Jyot</div>
-      <div class="balance-amount">${fmt(jyotPaid+jyotPersonal)}</div>
-      <div class="balance-sub">Shared: ${fmt(jyotPaid)} &nbsp;·&nbsp; Personal: ${fmt(jyotPersonal)}</div>
+    <div class="bc jy">
+      <div class="blbl">Jyot</div><div class="bname">Jyot</div>
+      <div class="bamt">${fmt(jyPaid+jyPers)}</div>
+      <div class="bsub">Shared: ${fmt(jyPaid)} · Personal: ${fmt(jyPers)}</div>
     </div>`;
 
-  let settlHTML = '';
-  if (josephOwes > 0.01) {
-    settlHTML = `<div class="settlement">
-      <div>
-        <div class="settlement-label">Settlement Required</div>
-        <div class="settlement-text"><span class="highlight">Joseph</span> owes Jyot <span class="amount">${fmt(josephOwes)}</span></div>
-      </div>
-      <div class="settlement-badge">Action Needed</div>
-    </div>`;
-  } else if (jyotOwes > 0.01) {
-    settlHTML = `<div class="settlement">
-      <div>
-        <div class="settlement-label">Settlement Required</div>
-        <div class="settlement-text"><span class="highlight">Jyot</span> owes Joseph <span class="amount">${fmt(jyotOwes)}</span></div>
-      </div>
-      <div class="settlement-badge">Action Needed</div>
-    </div>`;
-  } else if (expenses.length > 0) {
-    settlHTML = `<div class="settlement" style="border-color:rgba(78,203,141,0.2)">
-      <div>
-        <div class="settlement-label">Settlement Status</div>
-        <div class="settlement-text all-good">✓ You're all square!</div>
-      </div>
-      <div class="settlement-badge" style="background:rgba(78,203,141,0.12);border-color:rgba(78,203,141,0.25);color:var(--green)">Settled ✓</div>
-    </div>`;
+  let setlHTML = '';
+  if (jOwes>0.01) {
+    setlHTML = `<div class="setl"><div><div class="slbl">Settlement Required</div>
+      <div class="stxt"><span class="hi">Joseph</span> owes Jyot <span class="am">${fmt(jOwes)}</span></div></div>
+      <div class="sbadge">Action Needed</div></div>`;
+  } else if (jyOwes>0.01) {
+    setlHTML = `<div class="setl"><div><div class="slbl">Settlement Required</div>
+      <div class="stxt"><span class="hi">Jyot</span> owes Joseph <span class="am">${fmt(jyOwes)}</span></div></div>
+      <div class="sbadge">Action Needed</div></div>`;
+  } else if (expenses.length>0) {
+    setlHTML = `<div class="setl" style="border-color:rgba(78,203,141,.2)"><div>
+      <div class="slbl">Settlement Status</div><div class="stxt ok">✓ You're all square!</div></div>
+      <div class="sbadge" style="background:rgba(78,203,141,.12);border-color:rgba(78,203,141,.25);color:var(--green)">Settled ✓</div></div>`;
   }
-  document.getElementById('settlement-banner').innerHTML = settlHTML;
+  document.getElementById('settlement').innerHTML = setlHTML;
 
-  document.getElementById('stats-row').innerHTML = `
-    <div class="stat-card">
-      <div class="stat-value">${expenses.length}</div>
-      <div class="stat-label">Expenses</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value">${fmt(totalShared)}</div>
-      <div class="stat-label">Shared Total</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value">${fmt(fairShare)}</div>
-      <div class="stat-label">Each Person's Share</div>
-    </div>`;
+  document.getElementById('stats').innerHTML = `
+    <div class="sc"><div class="sv">${expenses.length}</div><div class="sl">Expenses</div></div>
+    <div class="sc"><div class="sv">${fmt(total)}</div><div class="sl">Shared Total</div></div>
+    <div class="sc"><div class="sv">${fmt(fair)}</div><div class="sl">Each Person's Share</div></div>`;
 
   const recent = expenses.slice(0,5);
-  document.getElementById('recent-list').innerHTML = recent.length
-    ? recent.map(expenseHTML).join('')
-    : `<div class="empty"><span class="empty-icon">🧾</span><div class="empty-text">No expenses yet — add your first one!</div></div>`;
+  document.getElementById('recent').innerHTML = recent.length
+    ? `<div class="txl">${recent.map(expHTML).join('')}</div>`
+    : `<div class="empty"><span class="eico">🧾</span><div class="etxt">No expenses yet — add your first one!</div></div>`;
 }
 
-let histFilter = 'All';
-let histSearch = '';
-
-function filterHistory(f, btn) {
-  histFilter = f;
-  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
+// ── Render History ─────────────────────────────
+let hFilter = 'All', hSearch = '';
+function setFilter(f, btn) {
+  hFilter = f;
+  document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
   renderHistory();
 }
-
-function searchHistory(q) {
-  histSearch = q.toLowerCase();
-  renderHistory();
-}
+function setSearch(q) { hSearch = q.toLowerCase(); renderHistory(); }
 
 function renderHistory() {
-  let expenses = loadExpenses();
-  if (histFilter==='Joseph') expenses = expenses.filter(e=>e.paidby==='Joseph');
-  else if (histFilter==='Jyot') expenses = expenses.filter(e=>e.paidby==='Jyot');
-  else if (histFilter==='Both') expenses = expenses.filter(e=>e.forwhom==='Both');
-  if (histSearch) expenses = expenses.filter(e =>
-    (e.category||'').toLowerCase().includes(histSearch) ||
-    ((e.notes||'').toLowerCase().includes(histSearch)) ||
-    (e.paidby||'').toLowerCase().includes(histSearch)
-  );
+  let ex = [...expenses];
+  if (hFilter==='Joseph') ex = ex.filter(e=>e.paidby==='Joseph');
+  else if (hFilter==='Jyot')   ex = ex.filter(e=>e.paidby==='Jyot');
+  else if (hFilter==='Shared') ex = ex.filter(e=>e.forwhom==='Both');
+  if (hSearch) ex = ex.filter(e=>(e.category+e.notes+e.paidby).toLowerCase().includes(hSearch));
 
-  document.getElementById('history-count').textContent = expenses.length;
-  if (!expenses.length) {
-    document.getElementById('history-list').innerHTML =
-      `<div class="empty"><span class="empty-icon">🔍</span><div class="empty-text">No expenses found</div></div>`;
+  document.getElementById('h-count').textContent = ex.length;
+  if (!ex.length) {
+    document.getElementById('history-list').innerHTML = `<div class="empty"><span class="eico">🔍</span><div class="etxt">No expenses found</div></div>`;
     return;
   }
-
   const groups = {};
-  expenses.forEach(e => { const mk=monthKey(e.date); if(!groups[mk]) groups[mk]=[]; groups[mk].push(e); });
+  ex.forEach(e => { const mk=monthKey(e.date); if(!groups[mk]) groups[mk]=[]; groups[mk].push(e); });
   let html = '';
-  for (const [month, items] of Object.entries(groups)) {
-    const total = items.reduce((s,e)=>s+parseFloat(e.amount||0),0);
-    html += `<div class="month-group">
-      <div class="month-label">${month} &nbsp;—&nbsp; ${fmt(total)}</div>
-      <div class="tx-list">${items.map(expenseHTML).join('')}</div>
-    </div>`;
+  for (const [month,items] of Object.entries(groups)) {
+    const tot = items.reduce((s,e)=>s+parseFloat(e.amount||0),0);
+    html += `<div class="mgrp"><div class="mlbl">${month} — ${fmt(tot)}</div><div class="txl">${items.map(expHTML).join('')}</div></div>`;
   }
   document.getElementById('history-list').innerHTML = html;
 }
 
+// ── Render Gifts ───────────────────────────────
 function renderGifts() {
-  const gifts = loadGifts();
-  document.getElementById('gifts-count').textContent = gifts.length;
-  document.getElementById('gifts-list').innerHTML = gifts.length
-    ? `<div class="tx-list">${gifts.map(giftHTML).join('')}</div>`
-    : `<div class="empty"><span class="empty-icon">🎁</span><div class="empty-text">No gifts recorded yet</div></div>`;
+  document.getElementById('g-count').textContent = gifts.length;
+  document.getElementById('gift-list').innerHTML = gifts.length
+    ? `<div class="txl">${gifts.map(giftHTML).join('')}</div>`
+    : `<div class="empty"><span class="eico">🎁</span><div class="etxt">No gifts recorded yet</div></div>`;
 }
 
-// ─── EXPORT EXCEL ─────────────────────────────────────────────────────────────
-function exportExcel() {
-  const expenses = loadExpenses();
-  const gifts    = loadGifts();
-  const wb = XLSX.utils.book_new();
-
-  const expRows = [['Date','Category','Paid By','Amount (₹)','For Whom','Notes']];
-  expenses.forEach(e => expRows.push([fmtDate(e.date),e.category,e.paidby,e.amount,e.forwhom,e.notes||'']));
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(expRows), 'Main Expenses');
-
-  const giftRows = [['Date','From','To','Amount (₹)','Reason/Notes']];
-  gifts.forEach(g => giftRows.push([fmtDate(g.date),g.from,g.to,g.amount,g.notes||'']));
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(giftRows), 'Gifts');
-
-  const totalShared    = expenses.filter(e=>e.forwhom==='Both').reduce((s,e)=>s+parseFloat(e.amount||0),0);
-  const josephPaid     = expenses.filter(e=>e.forwhom==='Both'&&e.paidby==='Joseph').reduce((s,e)=>s+parseFloat(e.amount||0),0);
-  const jyotPaid       = expenses.filter(e=>e.forwhom==='Both'&&e.paidby==='Jyot').reduce((s,e)=>s+parseFloat(e.amount||0),0);
-  const fairShare      = totalShared/2;
-  const josephPersonal = expenses.filter(e=>e.forwhom==='Joseph').reduce((s,e)=>s+parseFloat(e.amount||0),0);
-  const jyotPersonal   = expenses.filter(e=>e.forwhom==='Jyot').reduce((s,e)=>s+parseFloat(e.amount||0),0);
-  const josephGifts    = gifts.filter(g=>g.from==='Joseph').reduce((s,g)=>s+parseFloat(g.amount||0),0);
-  const jyotGifts      = gifts.filter(g=>g.from==='Jyot').reduce((s,g)=>s+parseFloat(g.amount||0),0);
-
-  const sumRows = [
-    ['Joseph & Jyot — Expense Summary', ''],
-    ['Generated on', new Date().toLocaleDateString('en-IN')], [''],
-    ['SHARED EXPENSES',''],
-    ['Total Shared Expenses', totalShared],
-    ["Each Person's Fair Share", fairShare],
-    ["Joseph's Contribution to Shared", josephPaid],
-    ["Jyot's Contribution to Shared", jyotPaid], [''],
-    ['SETTLEMENT',''],
-    ['Joseph Owes Jyot', Math.max(0,fairShare-josephPaid)],
-    ['Jyot Owes Joseph', Math.max(0,fairShare-jyotPaid)], [''],
-    ['PERSONAL EXPENSES',''],
-    ["Joseph's Personal Expenses", josephPersonal],
-    ["Jyot's Personal Expenses", jyotPersonal], [''],
-    ['GIFTS',''],
-    ['Total Gifts from Joseph', josephGifts],
-    ['Total Gifts from Jyot', jyotGifts], [''],
-    ['GRAND TOTALS',''],
-    ["Joseph's Total Spend", josephPaid+josephPersonal],
-    ["Jyot's Total Spend", jyotPaid+jyotPersonal],
-  ];
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sumRows), 'Summary');
-  XLSX.writeFile(wb, 'Joseph_Jyot_Expenses.xlsx');
-  showToast('📥  Excel downloaded!');
+// ── SYNC: Export/Import ────────────────────────
+function openSync() {
+  const data = { expenses, gifts, exported: new Date().toISOString() };
+  document.getElementById('sync-code').value = btoa(JSON.stringify(data));
+  document.getElementById('sync-modal').style.display = 'flex';
 }
+function closeSync()   { document.getElementById('sync-modal').style.display='none'; }
+function showImport()  { closeSync(); document.getElementById('import-modal').style.display='flex'; document.getElementById('import-code').value=''; }
+function closeImport() { document.getElementById('import-modal').style.display='none'; }
 
-// ─── INIT ─────────────────────────────────────────────────────────────────────
-const today = new Date().toISOString().split('T')[0];
-document.getElementById('exp-date').value  = today;
-document.getElementById('gift-date').value = today;
-
-// Render from cache immediately, then sync
-renderDashboard();
-fetchFromSheets().then(() => {
-  renderDashboard();
-});
-
-// Auto-refresh every 60s (in case the other person adds something)
-setInterval(async () => {
-  const ok = await fetchFromSheets();
-  if (ok) { renderDashboard(); renderHistory(); renderGifts(); }
-}, 60000);
-</script>
-
-<!-- ═══════════════════════════════════════════════════════════════════════════
-  GOOGLE APPS SCRIPT SETUP GUIDE
-  ════════════════════════════════════════════════════════════════════════════
-
-  Paste this code into your Google Apps Script (Extensions → Apps Script)
-  and deploy as a Web App (Execute as: Me, Who has access: Anyone).
-
-  ─────────────────────────────────────────────────────────────────────────────
-
-const SHEET_ID = SpreadsheetApp.getActiveSpreadsheet().getId();
-
-// NOTE: All mutations go through doGet (not doPost) so that cross-origin
-// redirects and CORS work correctly from the browser without extra headers.
-function doGet(e) {
-  const p      = e.parameter;
-  const action = p.action;
-  if (action === 'getAll')        return getAll();
-  if (action === 'addExpense')    return addExpense(p);
-  if (action === 'deleteExpense') return deleteExpense(p.id);
-  if (action === 'addGift')       return addGift(p);
-  if (action === 'deleteGift')    return deleteGift(p.id);
-  return json({error: 'unknown action: ' + action});
-}
-
-// doPost kept for completeness but not used by the app
-function doPost(e) { return doGet(e); }
-
-function getAll() {
-  const ss = SpreadsheetApp.openById(SHEET_ID);
-  const expSheet  = getOrCreateSheet(ss, 'Expenses',  ['id','date','category','paidby','amount','forwhom','notes']);
-  const giftSheet = getOrCreateSheet(ss, 'Gifts',     ['id','date','amount','from','to','notes']);
-  return json({ expenses: sheetToObjects(expSheet), gifts: sheetToObjects(giftSheet) });
-}
-
-function addExpense(p) {
-  const ss = SpreadsheetApp.openById(SHEET_ID);
-  const sheet = getOrCreateSheet(ss, 'Expenses', ['id','date','category','paidby','amount','forwhom','notes']);
-  sheet.appendRow([p.id, p.date, p.category, p.paidby, parseFloat(p.amount)||0, p.forwhom, p.notes||'']);
-  return json({ok:true});
-}
-
-function deleteExpense(id) {
-  deleteRowById(SpreadsheetApp.openById(SHEET_ID).getSheetByName('Expenses'), id);
-  return json({ok:true});
-}
-
-function addGift(p) {
-  const ss = SpreadsheetApp.openById(SHEET_ID);
-  const sheet = getOrCreateSheet(ss, 'Gifts', ['id','date','amount','from','to','notes']);
-  sheet.appendRow([p.id, p.date, parseFloat(p.amount)||0, p.from, p.to, p.notes||'']);
-  return json({ok:true});
-}
-
-function deleteGift(id) {
-  deleteRowById(SpreadsheetApp.openById(SHEET_ID).getSheetByName('Gifts'), id);
-  return json({ok:true});
-}
-
-function getOrCreateSheet(ss, name, headers) {
-  let sheet = ss.getSheetByName(name);
-  if (!sheet) {
-    sheet = ss.insertSheet(name);
-    sheet.appendRow(headers);
-  }
-  return sheet;
-}
-
-function sheetToObjects(sheet) {
-  if (!sheet) return [];
-  const rows = sheet.getDataRange().getValues();
-  if (rows.length < 2) return [];
-  const headers = rows[0];
-  return rows.slice(1).map(row => {
-    const obj = {};
-    headers.forEach((h,i) => obj[h] = row[i]);
-    return obj;
+function copyCode() {
+  const ta = document.getElementById('sync-code');
+  ta.select(); ta.setSelectionRange(0,99999);
+  navigator.clipboard.writeText(ta.value).then(()=>toast('📋 Code copied!')).catch(()=>{
+    document.execCommand('copy'); toast('📋 Code copied!');
   });
 }
 
-function deleteRowById(sheet, id) {
-  if (!sheet) return;
-  const data = sheet.getDataRange().getValues();
-  for (let i = data.length - 1; i >= 1; i--) {
-    if (String(data[i][0]) === String(id)) { sheet.deleteRow(i+1); break; }
+function importCode() {
+  const raw = document.getElementById('import-code').value.trim();
+  if (!raw) { toast('⚠️ Paste a sync code first','var(--red)'); return; }
+  try {
+    const data = JSON.parse(atob(raw));
+    if (!Array.isArray(data.expenses) || !Array.isArray(data.gifts)) throw new Error();
+
+    // Merge: combine both arrays, deduplicate by id, sort by date desc
+    const mergeArr = (a, b) => {
+      const map = {};
+      [...a,...b].forEach(x => map[x.id] = x);
+      return Object.values(map).sort((x,y) => (y.date||'') > (x.date||'') ? 1 : -1);
+    };
+    expenses = mergeArr(expenses, data.expenses);
+    gifts    = mergeArr(gifts,    data.gifts);
+    save(KEY_E, expenses);
+    save(KEY_G, gifts);
+
+    closeImport();
+    toast(`✅ Merged! ${expenses.length} expenses, ${gifts.length} gifts`);
+    renderDashboard(); renderHistory(); renderGifts();
+  } catch {
+    toast('❌ Invalid sync code — try copying again','var(--red)');
   }
 }
 
-function json(data) {
-  return ContentService.createTextOutput(JSON.stringify(data))
-    .setMimeType(ContentService.MimeType.JSON);
+// ── Export Excel ───────────────────────────────
+function exportExcel() {
+  const wb = XLSX.utils.book_new();
+  const eRows = [['Date','Category','Paid By','Amount (₹)','For Whom','Notes']];
+  expenses.forEach(e=>eRows.push([fmtDate(e.date),e.category,e.paidby,e.amount,e.forwhom,e.notes||'']));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(eRows), 'Expenses');
+  const gRows = [['Date','From','To','Amount (₹)','Notes']];
+  gifts.forEach(g=>gRows.push([fmtDate(g.date),g.from,g.to,g.amount,g.notes||'']));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(gRows), 'Gifts');
+  const total  = expenses.filter(e=>e.forwhom==='Both').reduce((s,e)=>s+parseFloat(e.amount||0),0);
+  const jPaid  = expenses.filter(e=>e.forwhom==='Both'&&e.paidby==='Joseph').reduce((s,e)=>s+parseFloat(e.amount||0),0);
+  const jyPaid = expenses.filter(e=>e.forwhom==='Both'&&e.paidby==='Jyot').reduce((s,e)=>s+parseFloat(e.amount||0),0);
+  const fair   = total/2;
+  const jPers  = expenses.filter(e=>e.forwhom==='Joseph').reduce((s,e)=>s+parseFloat(e.amount||0),0);
+  const jyPers = expenses.filter(e=>e.forwhom==='Jyot').reduce((s,e)=>s+parseFloat(e.amount||0),0);
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([
+    ['Joseph & Jyot — Summary',''],['Generated',new Date().toLocaleDateString('en-IN')],[''],
+    ['Total Shared',total],["Each Person's Share",fair],
+    ['Joseph Paid (shared)',jPaid],['Jyot Paid (shared)',jyPaid],[''],
+    ['Joseph Owes Jyot',Math.max(0,fair-jPaid)],['Jyot Owes Joseph',Math.max(0,fair-jyPaid)],[''],
+    ['Joseph Personal',jPers],['Jyot Personal',jyPers],[''],
+    ['Joseph Total',jPaid+jPers],['Jyot Total',jyPaid+jyPers],
+  ]),'Summary');
+  XLSX.writeFile(wb,'Joseph_Jyot_Expenses.xlsx');
+  toast('📥 Excel downloaded!');
 }
 
-  ─────────────────────────────────────────────────────────────────────────────
--->
-
+// ── Init ───────────────────────────────────────
+document.getElementById('e-date').value = today();
+document.getElementById('g-date').value = today();
+renderDashboard();
+</script>
 </body>
 </html>
